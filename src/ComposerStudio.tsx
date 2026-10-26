@@ -327,7 +327,7 @@ export default function ComposerStudio() {
   useEffect(() => { projectsRef.current = projects }, [projects])
 
   useEffect(() => {
-    if (!ready || page === 'landing') return
+    if (!ready) return
     void writeWorkspaceValue('composer-current-page', page).catch(() => {})
   }, [page, ready])
 
@@ -490,9 +490,9 @@ export default function ComposerStudio() {
             writeWorkspaceValue('pixo-legacy-projects-recovered', true),
             writeWorkspaceValue('pixo-projects-before-legacy-recovery', projectArchive),
           ])
-          const pageToRestore = savedPage && savedPage !== 'landing' && STUDIO_PAGES.has(savedPage)
+          const pageToRestore = savedPage && STUDIO_PAGES.has(savedPage)
             ? savedPage
-            : hydratedProject ? 'editor' : projectsToRestore.length ? 'gallery' : 'landing'
+            : 'landing'
           setPage(pageToRestore === 'editor' && !hydratedProject ? 'gallery' : pageToRestore)
         }
       } catch {
