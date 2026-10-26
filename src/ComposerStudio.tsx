@@ -15,6 +15,7 @@ type StoredPreferences = { paletteId?: string; formatId?: string; size?: DetailS
 type LibraryRoleFilter = 'all' | 'main' | 'background'
 type StudioPage = 'landing' | 'gallery' | 'templates' | 'editor'
 const STUDIO_PAGES = new Set<StudioPage>(['landing', 'gallery', 'templates', 'editor'])
+const CURRENT_PAGE_SESSION_KEY = 'pixo-current-page'
 type BackdropId = 'solid' | 'desk' | 'paper' | 'buildplate' | 'palette'
 type PaletteBackgroundId = 'lavender' | 'peach' | 'mint'
 type ProjectSnapshot = {
@@ -78,6 +79,15 @@ const isPaletteBackgroundId = (value: unknown): value is PaletteBackgroundId => 
 const paletteBackgroundForScheme = (paletteId?: string): PaletteBackgroundId => paletteId === 'palette-02' || paletteId === 'peach' ? 'peach' : paletteId === 'palette-03' || paletteId === 'aqua' || paletteId === 'mint' ? 'mint' : 'lavender'
 const safeStorage = <T,>(key: string, fallback: T): T => {
   try { return JSON.parse(localStorage.getItem(key) ?? 'null') as T ?? fallback } catch { return fallback }
+}
+function readSessionPage(): StudioPage | null {
+  try {
+    const value = sessionStorage.getItem(CURRENT_PAGE_SESSION_KEY) as StudioPage | null
+    return value && STUDIO_PAGES.has(value) ? value : null
+  } catch { return null }
+}
+function writeSessionPage(page: StudioPage) {
+  try { sessionStorage.setItem(CURRENT_PAGE_SESSION_KEY, page) } catch { /* storage can be unavailable in private browsing */ }
 }
 
 function normalizeAsset(asset: Partial<LibraryComponent> & Record<string, unknown>): LibraryComponent | null {
@@ -328,7 +338,7 @@ export default function ComposerStudio() {
 
   useEffect(() => {
     if (!ready) return
-    void writeWorkspaceValue('composer-current-page', page).catch(() => {})
+    writeSessionPage(page)
   }, [page, ready])
 
   useEffect(() => {
@@ -352,7 +362,7 @@ export default function ComposerStudio() {
     void (async () => {
       try {
         const removeEmptyProjects = new URLSearchParams(window.location.search).get('removeEmptyProjects') === '1'
-        const [newAssets, oldAssets, savedItems, preferences, savedPalettes, bundled, savedProjects, savedProjectId, savedPage, projectsMigrated, legacyProjectsRecovered, archivedProjects] = await Promise.all([
+        const [newAssets, oldAssets, savedItems, preferences, savedPalettes, bundled, savedProjects, savedProjectId, projectsMigrated, legacyProjectsRecovered, archivedProjects] = await Promise.all([
           readWorkspaceValue<LibraryComponent[] | null>('composer-assets', null),
           readWorkspaceValue<Array<Record<string, unknown>> | null>('assets', null),
           readWorkspaceValue<CompositionItem[] | null>('composer-scene', null),
@@ -361,11 +371,11 @@ export default function ComposerStudio() {
           readBundledManifest(),
           readWorkspaceValue<ProjectSnapshot[] | null>('composer-projects', null),
           readWorkspaceValue<string | null>('composer-current-project', null),
-          readWorkspaceValue<StudioPage | null>('composer-current-page', null),
           readWorkspaceValue<boolean>('composer-projects-migrated', false),
           readWorkspaceValue<boolean>('pixo-legacy-projects-recovered', false),
           readWorkspaceValue<ProjectSnapshot[]>('pixo-projects-before-legacy-recovery', []),
         ])
+        const savedPage = readSessionPage()
         const legacy = safeStorage<Array<Record<string, unknown>>>('pixo-library-assets', [])
         const chosen = (newAssets?.length ? newAssets : oldAssets?.length ? oldAssets : legacy) as Array<Record<string, unknown>>
         const normalized = chosen.map(normalizeAsset).filter((asset): asset is LibraryComponent => asset !== null)
@@ -839,7 +849,6 @@ export default function ComposerStudio() {
     void Promise.all([
       writeWorkspaceValue('composer-projects', nextProjects),
       writeWorkspaceValue('composer-current-project', currentProjectId),
-      writeWorkspaceValue('composer-current-page', 'editor'),
       writeWorkspaceValue('composer-scene', changedItems),
       writeWorkspaceValue('composer-preferences', { paletteId: snapshot.paletteId, formatId: snapshot.formatId, size: snapshot.size, backgroundColor: snapshot.backgroundColor, transparent: snapshot.transparent, includeBackground: snapshot.includeBackground } satisfies StoredPreferences),
     ]).then(() => {
