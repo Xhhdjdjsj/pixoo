@@ -8,13 +8,21 @@ export function cleanSvg(source: string) {
   root.querySelectorAll('script, foreignObject, iframe, object, embed').forEach((node) => node.remove())
   const normalizeLabel = (value: string) => value.toLocaleLowerCase('ru').replace(/[\s\u00a0]+/g, '')
   for (const text of Array.from(root.querySelectorAll('text'))) {
-    if (normalizeLabel(text.textContent ?? '') === 'фоновыеобъекты') text.remove()
+    if (normalizeLabel(text.textContent ?? '').includes('фоновыеобъекты')) text.remove()
   }
   for (const group of Array.from(root.querySelectorAll('g'))) {
     const texts = Array.from(group.querySelectorAll('text'))
     const hasGraphics = group.querySelector('path, rect, circle, ellipse, polygon, polyline, line, use')
-    if (texts.length > 1 && normalizeLabel(texts.map((text) => text.textContent ?? '').join('')) === 'фоновыеобъекты' && !hasGraphics) {
+    if (texts.length > 1 && normalizeLabel(texts.map((text) => text.textContent ?? '').join('')).includes('фоновыеобъекты') && !hasGraphics) {
       texts.forEach((text) => text.remove())
+    }
+  }
+  for (const path of Array.from(root.querySelectorAll('path'))) {
+    const pathData = path.getAttribute('d') ?? ''
+    if (path.getAttribute('fill')?.trim().toLocaleLowerCase('ru') === 'black'
+      && pathData.startsWith('M265.581 7199.84H276.627')
+      && pathData.includes('M1021.41 7227.93')) {
+      path.remove()
     }
   }
   for (const element of [root, ...Array.from(root.querySelectorAll('*'))]) {
