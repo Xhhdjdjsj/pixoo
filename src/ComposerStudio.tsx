@@ -490,9 +490,7 @@ export default function ComposerStudio() {
             writeWorkspaceValue('pixo-legacy-projects-recovered', true),
             writeWorkspaceValue('pixo-projects-before-legacy-recovery', projectArchive),
           ])
-          const pageToRestore = savedPage && STUDIO_PAGES.has(savedPage)
-            ? savedPage
-            : 'landing'
+          const pageToRestore = savedPage && STUDIO_PAGES.has(savedPage) ? savedPage : 'landing'
           setPage(pageToRestore === 'editor' && !hydratedProject ? 'gallery' : pageToRestore)
         }
       } catch {

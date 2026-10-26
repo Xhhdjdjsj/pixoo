@@ -53,6 +53,11 @@ sup{color:var(--ac2);font-size:10px;margin-left:3px}
 .card{min-width:0;overflow:hidden;background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:8px;cursor:pointer;transition:border-color .15s,transform .15s}
 .card:hover{border-color:var(--ac);transform:translateY(-2px)}
 .card b{display:block;margin:8px 4px 0;font-size:13px}.card small{margin:0 4px;display:block}
+.drag-handle{position:absolute;z-index:2;top:6px;left:6px;display:grid;place-items:center;width:24px;height:24px;border:1px solid #ffffff24;border-radius:8px;background:var(--pn);color:var(--ac2);font-size:16px;line-height:1;opacity:.9;cursor:grab;touch-action:none}
+.drag-handle:active{cursor:grabbing}
+.library-drag-ghost{position:fixed;z-index:100;left:0;top:0;width:68px;height:68px;padding:5px;border:1px solid var(--ac);border-radius:14px;background:var(--cd);box-shadow:0 12px 32px #09051d66;opacity:.88;pointer-events:none;transform:translate(-50%,-50%)}
+.library-drag-ghost .add,.library-drag-ghost .drag-handle{display:none!important}
+.stage.library-drop-target{border-color:var(--ac);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--ac) 55%,transparent)}
 .th{position:relative;aspect-ratio:1;border-radius:12px;background:linear-gradient(160deg,#3b2c7a,#2a1d5c);padding:10px}
 .th svg{width:100%;height:100%}
 .add{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;line-height:1}
@@ -172,25 +177,30 @@ dialog#ex textarea{width:100%;height:180px;max-height:32vh;background:#14102f;co
 @media(max-width:760px){
  html,body{height:100%;height:100dvh;min-height:0;overflow:hidden}
  body{display:flex;flex-direction:column;overflow:hidden}
- .top{position:relative;top:auto;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"logo project status" "undo compose export";align-items:center;flex:none;gap:6px;margin:6px 6px 0;padding:7px 8px;border-radius:15px}
+ .top{position:relative;top:auto;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"logo project status" "undo . export";align-items:center;flex:none;gap:6px;margin:6px 6px 0;padding:7px 8px;border-radius:15px}
  .logo{grid-area:logo;gap:7px;font-size:17px}.logo svg{width:23px;height:23px}
  .pj{grid-area:project;min-width:0;padding-left:8px;font-size:9px}.pj input{width:100%;min-width:0;max-width:100%;font-size:12px}
  .sv{grid-area:status;margin-left:0;gap:5px;font-size:10px;white-space:nowrap}.sv i{width:7px;height:7px}
  .ur{grid-area:undo;gap:4px}.ur button{width:31px;height:34px}
- #auto{grid-area:compose;min-width:0;width:100%;overflow:hidden;text-overflow:ellipsis}
+ #auto{display:none}
  #exp{grid-area:export;min-width:0;white-space:nowrap;padding-inline:6px}
  .top>.btn{min-height:36px;padding:6px 8px;font-size:10px}
  .app{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);align-content:stretch;flex:1 1 auto;width:100%;height:auto;min-height:0;padding:8px 8px calc(68px + env(safe-area-inset-bottom,0px));gap:0}
+ .app{touch-action:pan-y}
  .app>.pn,.app>.mid{display:none;width:100%;height:100%;max-height:none;min-width:0;min-height:0;margin:0;border-radius:16px;overflow:hidden}
  body[data-mobile-panel="canvas"] .app>.mid{display:flex;order:0}
  body[data-mobile-panel="components"] .app>.pn:first-child{display:flex;order:0}
  body[data-mobile-panel="properties"] .app>.pn:last-child{display:flex;order:0}
+ body[data-mobile-panel="compose"] .app>.mid{display:flex;order:0}
+ body[data-mobile-panel="compose"] .app>.mid>.pr{display:flex;flex:1;flex-direction:column;min-height:0;overflow:auto}
+ body[data-mobile-panel="compose"] .app>.mid>.cap,body[data-mobile-panel="compose"] .app>.mid>.stage,body[data-mobile-panel="compose"] .app>.mid>.bar{display:none}
  .app>.pn{max-height:none}.app>.pn .scr{max-height:none;min-height:0;overscroll-behavior:contain}
- .mid{min-height:0;gap:8px}.pr{flex:none;padding:8px;border-radius:15px}.pr>div:first-child{gap:8px}
+ .mid{min-height:0;gap:8px}.pr{display:none;flex:none;padding:8px;border-radius:15px}.pr>div:first-child{gap:8px}
  .stage{height:auto;min-height:0;max-height:none;flex:1 1 0;border-radius:15px}
  .cap{flex:none}.bar{flex:none;padding-bottom:2px}
- .mobile-panel-nav{position:fixed;z-index:35;right:8px;bottom:calc(7px + env(safe-area-inset-bottom,0px));left:8px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:5px;border:1px solid var(--ln);border-radius:17px;background:color-mix(in srgb,var(--pn) 94%,transparent);box-shadow:0 8px 26px #08051655;backdrop-filter:blur(14px)}
- .mobile-panel-button{display:flex;min-width:0;min-height:48px;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px;border-radius:12px;color:var(--mt);font-size:10px;font-weight:600;line-height:1.15}
+ .mobile-panel-nav{position:fixed;z-index:35;right:8px;bottom:calc(7px + env(safe-area-inset-bottom,0px));left:8px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:5px;border:1px solid var(--ln);border-radius:17px;background:color-mix(in srgb,var(--pn) 94%,transparent);box-shadow:0 8px 26px #08051655;backdrop-filter:blur(14px)}
+ .mobile-panel-button{display:flex;min-width:0;min-height:48px;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px;border-radius:12px;color:var(--mt);font-size:9px;font-weight:600;line-height:1.15;white-space:nowrap}
+ .stage{touch-action:none}
  .mobile-panel-button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
  .mobile-panel-button.on{background:var(--ac);color:#fff;box-shadow:0 4px 12px #7c5cff44}
  .mobile-panel-button:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
@@ -229,12 +239,13 @@ dialog#ex textarea{width:100%;height:180px;max-height:32vh;background:#14102f;co
 </section>
 <aside class="pn"><div class="scr" style="padding:0">
  <div class="sec"><h4>Свойства <small>Сцена</small></h4>
-  <p class="hint" id="none" style="margin:0">Выберите объект, чтобы менять размер и угол. Для действий нажмите правой кнопкой.</p>
+  <p class="hint" id="none" style="margin:0">Выберите объект. На телефоне: одним пальцем перемещайте, двумя — меняйте масштаб и поворот.</p>
   <div id="has" hidden>
    <div class="rg" style="margin-bottom:10px"><span>Выбранный объект</span><b id="on"></b></div>
    <div class="rg"><span>Масштаб</span><b id="scv"></b></div>
    <input type="range" id="sc" min="5" max="300" aria-label="Масштаб">
    <div class="rg"><span>Поворот</span><b id="rv">0°</b></div><input type="range" id="rt" min="-180" max="180" value="0" aria-label="Поворот">
+   <div class="sel-actions"><button id="mobileDup" type="button">▢ Дублировать</button><button id="mobileDelete" type="button" style="color:var(--dg)">Удалить</button></div>
    <div class="sel-actions"><button id="fx" type="button">↔ Отразить</button><button id="rs" type="button">↺ Сброс</button></div>
   </div>
  </div>
@@ -273,6 +284,9 @@ dialog#ex textarea{width:100%;height:180px;max-height:32vh;background:#14102f;co
  <button type="button" class="mobile-panel-button" data-mobile-panel="properties" role="tab" aria-selected="false">
   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="7" cy="18" r="2"/></svg><span>Свойства</span>
  </button>
+ <button type="button" class="mobile-panel-button" data-mobile-panel="compose" role="tab" aria-selected="false">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8L12 2Z"/><path d="m19 16 .9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9L19 16Z"/></svg><span>Сборка</span>
+ </button>
 </nav>
 <dialog id="ex" aria-labelledby="exportTitle">
  <div class="export-shell">
@@ -310,7 +324,7 @@ dialog#ex textarea{width:100%;height:180px;max-height:32vh;background:#14102f;co
 <script src="palette-backdrops.js"></script>
 <script>
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-function setMobilePanel(panel){if(!['canvas','components','properties'].includes(panel))return;document.body.dataset.mobilePanel=panel;$$('#mobilePanelNav [data-mobile-panel]').forEach(button=>{const active=button.dataset.mobilePanel===panel;button.classList.toggle('on',active);button.setAttribute('aria-selected',String(active))})}
+function setMobilePanel(panel){if(!['canvas','components','properties','compose'].includes(panel))return;document.body.dataset.mobilePanel=panel;$$('#mobilePanelNav [data-mobile-panel]').forEach(button=>{const active=button.dataset.mobilePanel===panel;button.classList.toggle('on',active);button.setAttribute('aria-selected',String(active))})}
 const inApp=window.parent!==window,escapeHtml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const iconSvg=body=>`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${body}</svg>`,I={layer:iconSvg('<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/>'),up:iconSvg('<path d="M12 19V5M6 11l6-6 6 6"/>'),dn:iconSvg('<path d="M12 5v14M6 13l6 6 6-6"/>'),dup:iconSvg('<rect x="9" y="9" width="11" height="11" rx="3"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>'),ungroup:iconSvg('<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16V4h12M11 13l2-2 2 2 3-4"/>'),del:iconSvg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>'),flip:iconSvg('<path d="M12 3v18M8 7 3 12l5 5V7ZM16 7l5 5-5 5V7Z"/>'),reset:iconSvg('<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/>'),top:iconSvg('<path d="M12 20V9M8 13l4-4 4 4M5 4h14"/>'),bot:iconSvg('<path d="M12 4v11M8 11l4 4 4-4M5 20h14"/>'),rot:iconSvg('<path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/>')};
 let parentProjectId='',appAssets=[],syncTimer,undoHistory=[],redoHistory=[],historyCurrent=null;
@@ -392,10 +406,10 @@ function lib(){const q=st.q.trim().toLowerCase();
  if(appAssets.length){
   const bySize=appAssets.filter(asset=>asset.detailSize===st.det.toUpperCase()),sources=[...new Set(bySize.map(a=>a.source||a.category||'Библиотека'))];if(st.src!=='all'&&!sources.includes(st.src))st.src='all';$('#src').innerHTML='<option value="all">Все иллюстрации ('+bySize.length+')</option>'+sources.map(source=>`<option value="${escapeHtml(source)}"${source===st.src?' selected':''}>${escapeHtml(source)}</option>`).join('');
   const found=bySize.filter(a=>(st.flt==='all'||(a.role==='background'?'b':'m')===st.flt)&&(st.src==='all'||(a.source||a.category||'Библиотека')===st.src)&&`${a.name} ${a.category} ${(a.tags||[]).join(' ')}`.toLowerCase().includes(q));
-  $('#gr').innerHTML=found.map(a=>`<div class="card" data-asset-id="${escapeHtml(a.id)}"><div class="th"><svg viewBox="${escapeHtml(a.viewBox||'0 0 512 512')}" class="${st.det==='s'?'compact':''}">${a.markup}</svg><button class="add" aria-label="Добавить: ${escapeHtml(a.name)}">+</button></div><b>${escapeHtml(a.name)}</b><small>${a.role==='background'?'Фоновый':'Главный'} · ${a.detailSize}</small></div>`).join('')||'<p class="mt">Ничего не найдено</p>';
+  $('#gr').innerHTML=found.map(a=>`<div class="card" data-asset-id="${escapeHtml(a.id)}" title="Нажмите, чтобы добавить по центру, или перетащите на холст"><div class="th"><button class="drag-handle" type="button" aria-label="Перетащить ${escapeHtml(a.name)} на холст" title="Перетащить на холст">⠿</button><svg viewBox="${escapeHtml(a.viewBox||'0 0 512 512')}" class="${st.det==='s'?'compact':''}">${a.markup}</svg><button class="add" aria-label="Добавить: ${escapeHtml(a.name)}">+</button></div><b>${escapeHtml(a.name)}</b><small>${a.role==='background'?'Фоновый':'Главный'} · ${a.detailSize}</small></div>`).join('')||'<p class="mt">Ничего не найдено</p>';
  }else{
   $('#src').innerHTML='<option value="all">Все иллюстрации</option>';
-  $('#gr').innerHTML=Object.entries(K).flatMap(([k,v])=>['m','b'].map(c=>[k,v,c])).filter(([k,v,c])=>(st.flt=='all'||c==st.flt)&&v[0].toLowerCase().includes(q)).map(([k,v,c])=>`<div class="card" data-k="${k}" data-v="${c}"><div class="th"><svg viewBox="-56 -56 112 112" class="${st.det=='s'?'compact':''}">${art(k,c)}</svg><button class="add" aria-label="Добавить: ${v[0]}">+</button></div><b>${v[0]}</b><small>${c=='m'?'Главный':'Фоновый'} · ${st.det.toUpperCase()}</small></div>`).join('')||'<p class="mt">Ничего не найдено</p>';
+  $('#gr').innerHTML=Object.entries(K).flatMap(([k,v])=>['m','b'].map(c=>[k,v,c])).filter(([k,v,c])=>(st.flt=='all'||c==st.flt)&&v[0].toLowerCase().includes(q)).map(([k,v,c])=>`<div class="card" data-k="${k}" data-v="${c}" title="Нажмите, чтобы добавить по центру, или перетащите на холст"><div class="th"><button class="drag-handle" type="button" aria-label="Перетащить ${v[0]} на холст" title="Перетащить на холст">⠿</button><svg viewBox="-56 -56 112 112" class="${st.det=='s'?'compact':''}">${art(k,c)}</svg><button class="add" aria-label="Добавить: ${v[0]}">+</button></div><b>${v[0]}</b><small>${c=='m'?'Главный':'Фоновый'} · ${st.det.toUpperCase()}</small></div>`).join('')||'<p class="mt">Ничего не найдено</p>';
  }
  $('#pal').innerHTML=Object.entries(P).map(([k,v])=>`<button class="o" data-g="pal" data-v="${k}"><span class="dots">${[...(v.objectColors||v.c||[]).slice(0,3),...(v.backgroundColors||[v.mid]).slice(0,1)].map(c=>`<i style="background:${c}"></i>`).join('')}</span>${escapeHtml(v.name||v.n)}</button>`).join('')}
 function editorState(){const [W,H]=dim();return{name:st.name,items:st.objs.filter(o=>o.markup).map(({id,...item})=>({...item,id:String(item.assetId||id),objectId:String(item.objectId||id)})),formatId:st.fmt==='c'?'custom':({h:'wide',q:'square',v:'portrait'})[st.fmt],canvasWidth:W,canvasHeight:H,size:st.det==='s'?'S':'L',paletteId:st.pal,paletteBackgroundId:st.paletteBackgroundId,backgroundColor:st.fill,transparent:st.tr,includeBackground:st.bgo,preserveOriginalColors:!!st.keep,backdropId:({fill:'solid',wood:'desk',paper:'paper',kit:'buildplate',palette:'palette'})[st.surf]||'solid'}}
@@ -426,8 +440,9 @@ function sync(send=true){scene();const o=get(st.sel),[W,H]=dim(),n=st.objs.lengt
  $('#mode').textContent=st.mode==='n'?'# По названиям':'✦ По смыслу';$('#th').value=st.mode==='n'?st.nm2:st.th;$('#th').placeholder=st.mode==='n'?'Например: книга, лампа, монета':'Метафора или заголовок';
  $$('#chips .chip').forEach(c=>c.classList.toggle('on',c.textContent===(st.mode==='n'?st.nm2:st.th)));
  if(!send){$('#sd').textContent='Сохранено';return}$('#sd').textContent='Сохранение…';clearTimeout(tm);tm=setTimeout(()=>{commit();if(inApp){if(parentProjectId)window.parent.postMessage({type:'pixo:editor-change',projectId:parentProjectId,state:editorState()},window.location.origin)}else{try{localStorage.setItem('pixo1',JSON.stringify(st));$('#sd').textContent='Сохранено'}catch(e){$('#sd').textContent='Ошибка сохранения'}}},350)}
-function add(k,v='m'){const [W,H]=dim(),n=st.objs.length%5;const o={id:st.nid++,k,x:W/2+n*30-60,y:H/2+n*24-48,v,s:v=='b'||K[k][1]=='b'?.3:.45};st.objs.push(o);st.sel=o.id;sync()}
-function addAsset(asset){const [W,H]=dim(),width=Math.min(W*.28,320),height=width*(Number(asset.height)||1)/(Number(asset.width)||1),id=crypto.randomUUID();const item={...asset,id,assetId:asset.id,objectId:id,x:clamp(W/2-width/2,0,W-width),y:clamp(H/2-height/2,0,H-height),width,height,rotation:0,flipX:false,flipY:false,opacity:1,visible:true,locked:false,layoutMode:'manual'};st.objs.push(item);st.sel=id;sync()}
+function add(k,v='m',center=null){const [W,H]=dim(),n=st.objs.length%5,o={id:st.nid++,k,x:center?clamp(center[0],0,W):W/2+n*30-60,y:center?clamp(center[1],0,H):H/2+n*24-48,v,s:v=='b'||K[k][1]=='b'?.3:.45};st.objs.push(o);st.sel=o.id;sync()}
+function addAsset(asset,center=null){const [W,H]=dim(),width=Math.min(W*.28,320),height=width*(Number(asset.height)||1)/(Number(asset.width)||1),id=crypto.randomUUID(),cx=center?center[0]:W/2,cy=center?center[1]:H/2;const item={...asset,id,assetId:asset.id,objectId:id,x:clamp(cx-width/2,0,W-width),y:clamp(cy-height/2,0,H-height),width,height,rotation:0,flipX:false,flipY:false,opacity:1,visible:true,locked:false,layoutMode:'manual'};st.objs.push(item);st.sel=id;sync()}
+function addLibraryCard(card){if(card.dataset.assetId){const asset=appAssets.find(item=>item.id===card.dataset.assetId);if(asset){addAsset(asset);setMobilePanel('canvas')}return}if(card.dataset.k){add(card.dataset.k,card.dataset.v||'m');setMobilePanel('canvas')}}
 function switchRole(){const item=get(st.sel);if(!item)return;const next=objectRole(item)==='background'?'main':'background';if(item.markup){const family=String(item.familyId||'').replace(/^(?:main|background)-/,'');const variant=appAssets.find(asset=>asset.role===next&&asset.detailSize===st.det.toUpperCase()&&String(asset.familyId||'').replace(/^(?:main|background)-/,'')===family)||appAssets.find(asset=>asset.role===next&&asset.detailSize===st.det.toUpperCase()&&asset.name===item.name);if(variant){const side=Math.max(item.width,item.height),ratio=Number(variant.width||1)/Math.max(1,Number(variant.height)||1),width=ratio>=1?side:side*ratio,height=ratio>=1?side/ratio:side;Object.assign(item,variant,{id:item.id,objectId:item.objectId,assetId:variant.id,x:item.x+item.width/2-width/2,y:item.y+item.height/2-height/2,width,height,rotation:item.rotation,flipX:item.flipX,flipY:item.flipY,opacity:item.opacity,visible:item.visible,locked:item.locked,layoutMode:item.layoutMode})}else item.role=next}else item.v=next==='background'?'b':'m';item.visible=true;if(next==='background')st.bgo=true;recolorCache.clear();sync()}
 function switchDetail(next){if(next===st.det)return;const variants=new Map(appAssets.map(asset=>[`${asset.role}:${asset.familyId}:${asset.detailSize}`,asset]));
  st.objs=st.objs.map(item=>{if(!item.markup)return item;const variant=variants.get(`${item.role}:${item.familyId}:${next.toUpperCase()}`);if(!variant)return item;const side=Math.max(item.width,item.height),ratio=variant.width/Math.max(1,variant.height),width=ratio>=1?side:side*ratio,height=ratio>=1?side/ratio:side;return{...item,...variant,objectId:item.objectId,id:item.id,assetId:variant.id,x:item.x+item.width/2-width/2,y:item.y+item.height/2-height/2,width,height,rotation:item.rotation,flipX:item.flipX,flipY:item.flipY,opacity:item.opacity,visible:item.visible,locked:item.locked,layoutMode:item.layoutMode}});
@@ -474,7 +489,13 @@ function composeByNames(){const [W,H]=dim(),requested=(st.nm2||'').toLocaleLower
 function svgStr(previewOnly=false){const [W,H]=dim();return`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"${st.det=='s'?' class="compact"':''}>\n<style>.compact .d{display:none}</style>\n${previewOnly?'':bg(W,H,0)}\n${objsSvg().replace(/ style="cursor:move"/g,'').replace(/ data-pixo-object="[^"]+"/g,'').replace(/ data-id="[^"]+"/g,'')}\n</svg>`}
 function svgBackgroundStr(){const [W,H]=dim();return`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${bg(W,H,0)}</svg>`}
 function pt(e){const r=sv.getBoundingClientRect(),[W,H]=dim();return[(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H]}
-sv.addEventListener('pointerdown',e=>{if(e.button!==0)return;const t=e.target.closest('[data-h],[data-pixo-object]');if(!t){st.sel=null;sync();return}
+const touchPointers=new Map(),canvasStage=$('#stage');let touchTransform=null;
+const mobilePanelOrder=['canvas','components','properties','compose'];let mobileSwipe=null;
+$('.app').addEventListener('pointerdown',e=>{if(e.pointerType!=='touch'||!matchMedia('(max-width:760px)').matches)return;if(e.target.closest('button,input,select,textarea,[data-mobile-panel],dialog,.drag-handle,[data-pixo-object],[data-h]'))return;if(e.target.closest('.stage')&&touchPointers.size!==1)return;mobileSwipe={pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,panel:document.body.dataset.mobilePanel}});
+function finishMobileSwipe(e,cancelled=false){const swipe=mobileSwipe;if(!swipe||swipe.pointerId!==e.pointerId)return;mobileSwipe=null;if(cancelled)return;const dx=e.clientX-swipe.startX,dy=e.clientY-swipe.startY;if(Math.abs(dx)<56||Math.abs(dx)<Math.abs(dy)*1.25)return;const index=mobilePanelOrder.indexOf(swipe.panel),next=index+(dx<0?1:-1);if(next>=0&&next<mobilePanelOrder.length)setMobilePanel(mobilePanelOrder[next])}
+document.addEventListener('pointerup',e=>finishMobileSwipe(e));document.addEventListener('pointercancel',e=>finishMobileSwipe(e,true));
+canvasStage.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')return;touchPointers.set(e.pointerId,{clientX:e.clientX,clientY:e.clientY});if(touchPointers.size>1)mobileSwipe=null;if(touchPointers.size!==2||!st.sel)return;const ids=[...touchPointers.keys()].slice(-2),o=get(st.sel);if(!o)return;const a=pt(touchPointers.get(ids[0])),b=pt(touchPointers.get(ids[1])),dx=b[0]-a[0],dy=b[1]-a[1];touchTransform={ids,startDistance:Math.max(1,Math.hypot(dx,dy)),startAngle:Math.atan2(dy,dx)*180/Math.PI,startMidX:(a[0]+b[0])/2,startMidY:(a[1]+b[1])/2,startCenterX:o.markup?o.x+o.width/2:o.x,startCenterY:o.markup?o.y+o.height/2:o.y,startWidth:o.width,startHeight:o.height,startScale:o.s,startRotation:Number(o.rotation??o.r)||0,markup:!!o.markup};drag=null;ids.forEach(id=>{try{canvasStage.setPointerCapture(id)}catch{}});e.preventDefault()},true);
+sv.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'&&touchTransform){e.preventDefault();return}if(e.button!==0)return;const t=e.target.closest('[data-h],[data-pixo-object]');if(!t){if(!(e.pointerType==='touch'&&st.sel)){st.sel=null;sync()}return}
  if(t.dataset.h){const o=get(st.sel);if(!o)return;const p=pt(e),cx=o.markup?o.x+o.width/2:o.x,cy=o.markup?o.y+o.height/2:o.y;if(t.dataset.h==='r')drag={m:'r',cx,cy,a:Math.atan2(p[1]-cy,p[0]-cx)*180/Math.PI,rotation:Number(o.rotation??o.r)||0};else if(o.markup)drag={m:'s',x:p[0],y:p[1],w:o.width,h:o.height,ratio:o.height/Math.max(1,o.width)};else drag={m:'legacy-s',x:p[0],y:p[1],s:o.s,rotation:Number(o.r)||0,cx:o.x,cy:o.y}}
  else{const o=get(t.dataset.pixoObject);if(!o||o.locked)return;const p=pt(e);st.sel=o.id;drag={m:'m',dx:o.x-p[0],dy:o.y-p[1]}}
  sv.setPointerCapture(e.pointerId);sync()});
@@ -483,9 +504,21 @@ sv.addEventListener('pointermove',e=>{if(!drag)return;const o=get(st.sel),p=pt(e
  else if(drag.m==='m'){if(o.markup){o.x=clamp(p[0]+drag.dx,0,W-o.width);o.y=clamp(p[1]+drag.dy,0,H-o.height)}else{o.x=clamp(p[0]+drag.dx,0,W);o.y=clamp(p[1]+drag.dy,0,H)}}
  else if(drag.m==='s'){o.width=clamp(drag.w+p[0]-drag.x,20,W-o.x);o.height=clamp(o.width*drag.ratio,20,H-o.y);o.width=clamp(o.height/drag.ratio,20,W-o.x)}
  else{const angle=-(drag.rotation)*Math.PI/180,dx=p[0]-drag.cx,dy=p[1]-drag.cy,scaled=Math.max(Math.abs(dx*Math.cos(angle)-dy*Math.sin(angle)),Math.abs(dx*Math.sin(angle)+dy*Math.cos(angle)))/200;o.s=clamp(scaled,.05,3)}sync()});
+document.addEventListener('pointermove',e=>{if(!touchPointers.has(e.pointerId))return;touchPointers.set(e.pointerId,{clientX:e.clientX,clientY:e.clientY});if(!touchTransform||!touchTransform.ids.includes(e.pointerId))return;const [a,b]=touchTransform.ids.map(id=>touchPointers.get(id)).map(point=>pt(point)),dx=b[0]-a[0],dy=b[1]-a[1],distance=Math.max(1,Math.hypot(dx,dy)),factor=distance/touchTransform.startDistance,midX=(a[0]+b[0])/2,midY=(a[1]+b[1])/2,rotationDelta=(Math.atan2(dy,dx)*180/Math.PI-touchTransform.startAngle+540)%360-180,[W,H]=dim(),o=get(st.sel);if(!o)return;const rotation=((touchTransform.startRotation+rotationDelta+180)%360+360)%360-180,cx=touchTransform.startCenterX+midX-touchTransform.startMidX,cy=touchTransform.startCenterY+midY-touchTransform.startMidY;if(o.markup){const ratio=touchTransform.startHeight/Math.max(1,touchTransform.startWidth),maxWidth=Math.max(1,Math.min(W,H/ratio)),width=clamp(touchTransform.startWidth*factor,Math.min(20,maxWidth),maxWidth),height=width*ratio;o.width=width;o.height=height;o.x=clamp(cx-width/2,0,W-width);o.y=clamp(cy-height/2,0,H-height);o.rotation=rotation}else{o.x=clamp(cx,0,W);o.y=clamp(cy,0,H);o.s=clamp(touchTransform.startScale*factor,.05,3);o.r=rotation}sync();e.preventDefault()},{passive:false});
+function finishTouchPointer(e){if(e.pointerType!=='touch')return;touchPointers.delete(e.pointerId);if(touchTransform?.ids.includes(e.pointerId))touchTransform=null}
+document.addEventListener('pointerup',finishTouchPointer);document.addEventListener('pointercancel',finishTouchPointer);
 const finishCanvasDrag=()=>{drag=null};sv.addEventListener('pointerup',finishCanvasDrag);sv.addEventListener('pointercancel',finishCanvasDrag);
+let libraryPointerDrag=null,mobileCardTap=null,lastMobileTapCard=null;const libraryGrid=$('#gr'),dropStage=$('#stage');
+libraryGrid.addEventListener('pointerdown',e=>{if(e.button!==0)return;const card=e.target.closest('.card');if(!card)return;const handle=e.target.closest('.drag-handle');if(e.pointerType==='touch'){mobileCardTap={pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,card,handle:!!handle,moved:false};if(!handle)return}libraryPointerDrag={pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,card,started:false,ghost:null}});
+document.addEventListener('pointermove',e=>{const tap=mobileCardTap;if(tap&&tap.pointerId===e.pointerId&&Math.hypot(e.clientX-tap.startX,e.clientY-tap.startY)>8)tap.moved=true},{passive:true});
+document.addEventListener('pointermove',e=>{const state=libraryPointerDrag;if(!state||e.pointerId!==state.pointerId)return;if(!state.started){if(Math.hypot(e.clientX-state.startX,e.clientY-state.startY)<8)return;state.started=true;const thumb=state.card.querySelector('.th')?.cloneNode(true);if(thumb){thumb.classList.add('library-drag-ghost');thumb.querySelectorAll('button').forEach(button=>button.remove());document.body.append(thumb);state.ghost=thumb}dropStage.classList.add('library-drop-target');if(matchMedia('(max-width:760px)').matches)setMobilePanel('canvas')}if(state.ghost){state.ghost.style.left=e.clientX+'px';state.ghost.style.top=e.clientY+'px'}const rect=dropStage.getBoundingClientRect(),inside=e.clientX>=rect.left&&e.clientX<=rect.right&&e.clientY>=rect.top&&e.clientY<=rect.bottom;dropStage.classList.toggle('library-drop-target',inside)});
+function finishLibraryPointerDrag(e,cancelled=false){const state=libraryPointerDrag;if(!state||e.pointerId!==state.pointerId)return;libraryPointerDrag=null;state.ghost?.remove();dropStage.classList.remove('library-drop-target');if(!state.started)return;const rect=dropStage.getBoundingClientRect(),inside=!cancelled&&e.clientX>=rect.left&&e.clientX<=rect.right&&e.clientY>=rect.top&&e.clientY<=rect.bottom;if(!inside){if(matchMedia('(max-width:760px)').matches)setMobilePanel('components');return}const point=pt(e),assetId=state.card.dataset.assetId;if(assetId){const asset=appAssets.find(item=>item.id===assetId);if(asset)addAsset(asset,point)}else if(state.card.dataset.k)add(state.card.dataset.k,state.card.dataset.v||'m',point);if(matchMedia('(max-width:760px)').matches)setMobilePanel('canvas')}
+function finishMobileCardTap(e,cancelled=false){const tap=mobileCardTap;if(!tap||e.pointerId!==tap.pointerId)return;mobileCardTap=null;if(cancelled||tap.handle||tap.moved)return;const hit=document.elementFromPoint(e.clientX,e.clientY);if(!hit||!tap.card.contains(hit))return;lastMobileTapCard=tap.card;setTimeout(()=>{if(lastMobileTapCard===tap.card)lastMobileTapCard=null},700);addLibraryCard(tap.card)}
+document.addEventListener('pointerup',e=>{finishMobileCardTap(e);finishLibraryPointerDrag(e)});document.addEventListener('pointercancel',e=>{finishMobileCardTap(e,true);finishLibraryPointerDrag(e,true)});
 document.addEventListener('click',e=>{const t=e.target;let b;
+ const clickedCard=t.closest('.card');if(lastMobileTapCard&&clickedCard===lastMobileTapCard){lastMobileTapCard=null;return}
  if(b=t.closest('[data-mobile-panel]')){setMobilePanel(b.dataset.mobilePanel);return}
+ if(b=t.closest('.drag-handle'))return;
  if(b=t.closest('[data-g]')){const g=b.dataset.g,v=b.dataset.v;
   if(g==='det'){switchDetail(v);return}
   if(g=='fmt'&&v!=st.fmt){const [W,H]=D[v];resizeCanvas(W,H);st.fmt=v;st.cw=W;st.ch=H}
@@ -493,12 +526,11 @@ document.addEventListener('click',e=>{const t=e.target;let b;
  if(b=t.closest('[data-sw]')){st.fill=b.dataset.sw;st.tr=false;sync();return}
  if(b=t.closest('[data-bg-palette]')){const id=b.dataset.bgPalette,variant=PALETTE_BACKDROPS[id];if(variant){st.paletteBackgroundId=id;st.fill=variant.bg;st.tr=false;sync()}return}
  if(b=t.closest('[data-t]')){st.tab=b.dataset.t;sync();return}
- if(b=t.closest('[data-asset-id]')){const asset=appAssets.find(a=>a.id===b.dataset.assetId);if(asset){addAsset(asset);setMobilePanel('canvas')}return}
- if(b=t.closest('.card')){add(b.dataset.k,b.dataset.v);setMobilePanel('canvas');return}
+ if(b=t.closest('.card')){addLibraryCard(b);return}
  if(b=t.closest('#chips .chip')){if(st.mode==='n'){st.nm2=(st.nm2.trim()?st.nm2.replace(/[,\s]+$/,'')+', ':'')+b.textContent;drawChips();sync()}else{st.th=b.textContent;requestComposition()}return}
  if(b=t.closest('#pl .row,#ob .chip')){const id=b.dataset.id,a=t.closest('[data-a]');st.sel=id;if(a&&a.dataset.a=='del')del(id);else if(a&&a.dataset.a=='dup')dup();else if(a&&['up','dn','top','bottom'].includes(a.dataset.a))moveLayer(a.dataset.a,id);else sync()}});
 $('#sc').oninput=e=>{const o=get(st.sel);if(o){const scale=e.target.value/100;if(o.markup){const width=scale*Math.min(...dim()),ratio=o.height/Math.max(1,o.width);o.width=clamp(width,20,dim()[0]-o.x);o.height=clamp(o.width*ratio,20,dim()[1]-o.y)}else o.s=scale;sync()}};
-$('#rt').oninput=e=>{const o=get(st.sel);if(o){if(o.markup)o.rotation=+e.target.value;else o.r=+e.target.value;sync()}};$('#fx').onclick=()=>{const o=get(st.sel);if(o){if(o.markup)o.flipX=!o.flipX;else o.fx=!o.fx;sync()}};$('#rs').onclick=()=>{const o=get(st.sel);if(o){if(o.markup){o.rotation=0;o.flipX=false;o.flipY=false}else{o.r=0;o.fx=false}sync()}};
+$('#rt').oninput=e=>{const o=get(st.sel);if(o){if(o.markup)o.rotation=+e.target.value;else o.r=+e.target.value;sync()}};$('#fx').onclick=()=>{const o=get(st.sel);if(o){if(o.markup)o.flipX=!o.flipX;else o.fx=!o.fx;sync()}};$('#rs').onclick=()=>{const o=get(st.sel);if(o){if(o.markup){o.rotation=0;o.flipX=false;o.flipY=false}else{o.r=0;o.fx=false}sync()}};$('#mobileDup').onclick=()=>dup();$('#mobileDelete').onclick=()=>del();
 const applySize=()=>{const W=clamp(+$('#cw').value||1080,200,12000),H=clamp(+$('#ch').value||1920,200,12000);resizeCanvas(W,H);D.c=[W,H];st.cw=W;st.ch=H;st.fmt='c';sync()};$('#cok').onclick=applySize;['#cw','#ch'].forEach(selector=>$(selector).onkeydown=e=>{if(e.key==='Enter')applySize()});$$('.pre .chip').forEach(button=>button.onclick=()=>{$('#cw').value=button.dataset.w;$('#ch').value=button.dataset.h;applySize()});
 $('#src').onchange=e=>{st.src=e.target.value;lib()};$('#fuBtn').onclick=()=>$('#fu').click();$('#fu').onchange=e=>{void importSvgFiles(e.target.files);e.target.value=''};const uploadZone=$('#uploadZone');uploadZone.ondragover=e=>{e.preventDefault();uploadZone.classList.add('dragging')};uploadZone.ondragleave=()=>uploadZone.classList.remove('dragging');uploadZone.ondrop=e=>{e.preventDefault();uploadZone.classList.remove('dragging');void importSvgFiles(e.dataTransfer.files)};
 const extractHex=text=>[...new Set((text.match(/#[\da-f]{3,8}\b/gi)||[]).map(color=>color.length===4?'#'+[...color.slice(1)].map(ch=>ch+ch).join('').toLowerCase():color.toLowerCase()))];
