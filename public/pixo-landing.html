@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -133,11 +133,8 @@ h2{margin:0;font:700 clamp(1.8rem,4.2vw,3.6rem)/1.05 Unbounded,Manrope,sans-seri
 .fo{position:absolute;aspect-ratio:1;translate:calc(var(--px,0)*var(--d)*-1px) calc(var(--py,0)*var(--d)*-1px);transition:translate .5s cubic-bezier(.2,.8,.2,1);filter:drop-shadow(8px 10px 0 rgba(26,16,51,.28))}
 footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;padding-block:32px 48px;color:var(--mut);font-size:14px}
 #cur{position:fixed;left:0;top:0;z-index:60;pointer-events:none}
-#cur i{position:absolute;left:0;top:0;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--v);display:grid;place-items:center;color:#fff;font:700 12px Manrope,sans-serif;font-style:normal;opacity:0;transition:width .35s cubic-bezier(.3,1.4,.4,1),height .35s cubic-bezier(.3,1.4,.4,1),margin .35s cubic-bezier(.3,1.4,.4,1),opacity .3s}
+#cur i{position:absolute;left:0;top:0;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--v);opacity:0;transition:opacity .3s}
 #cur.on i{opacity:1}
-#cur.card-h i{width:68px;height:68px;margin:-34px 0 0 -34px;opacity:.9}
-#cur.link-h i{width:44px;height:44px;margin:-22px 0 0 -22px;opacity:.3}
-#cur span{opacity:0;transition:opacity .2s}#cur.card-h span{opacity:1}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));translate:-50% 160%;background:var(--ink);color:var(--bg);padding:14px 22px;border-radius:99px;font-weight:700;transition:translate .5s cubic-bezier(.3,1.4,.4,1);z-index:70;max-width:calc(100vw - 32px);text-align:center}
 .toast.on{translate:-50% 0}
 @media(hover:none){#cur,#aur{display:none}}
@@ -158,7 +155,7 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;paddin
 <symbol id="pen" viewBox="0 0 100 100"><g stroke="#1a1033" stroke-width="3" stroke-linejoin="round" transform="rotate(35 50 50)"><rect x="43" y="4" width="14" height="72" rx="4" fill="#ff8fb1"/><path d="M43 76h14l-7 18z" fill="#fff"/><rect x="43" y="14" width="14" height="9" fill="#2a2147"/></g></symbol>
 </defs></svg>
 <div id="aur"></div>
-<div id="cur"><i><span>Двигай</span></i></div>
+<div id="cur"><i></i></div>
 <div class="wrap">
 <nav class="nav">
 <a class="logo" href="#top" data-go="body"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="1" y="1" width="11" height="14" rx="3" fill="#8b6cff"/><rect x="14" y="1" width="11" height="8" rx="3" fill="#b9a6ff"/><rect x="1" y="17" width="8" height="8" rx="3" fill="#b9a6ff"/><rect x="11" y="11" width="14" height="14" rx="3" fill="#6f4bff"/></svg>Pixo</a>
@@ -243,17 +240,17 @@ $$('[data-pixo]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();w
 $$('[data-go]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();const t=b.dataset.go==='body'?document.body:$(b.dataset.go);t.scrollIntoView({behavior:rm?'auto':'smooth'})}));
 const NM={book:'Книга',phone:'Смартфон',puzzle:'Пазл',coin:'Монета'};
 const pl=k=>k+(k%10==1&&k%100!=11?' объект':(k%10>1&&k%10<5&&(k%100<12||k%100>14))?' объекта':' объектов');
-const ab=$('#ab'),sn=$('#sn'),nm=$('#nm'),ps=$('#pos'),cn=$('#cn'),cur=$('#cur'),cs=cur.querySelector('span'),hid=new Set();
+const ab=$('#ab'),sn=$('#sn'),nm=$('#nm'),ps=$('#pos'),cn=$('#cn'),cur=$('#cur'),hid=new Set();
 let sel=null,z=1,dg=null;
-function mk(k,x,y,w){const d=document.createElement('div');d.className='ob';d.dataset.k=k;d.dataset.cur='Двигай';d.style.cssText='left:'+x+'%;top:'+y+'%;width:'+w+'%';d.innerHTML='<svg viewBox="0 0 100 100"><use href="#'+k+'"/></svg>';d.classList.toggle('hid',hid.has(k));ab.append(d);return d}
+function mk(k,x,y,w){const d=document.createElement('div');d.className='ob';d.dataset.k=k;d.style.cssText='left:'+x+'%;top:'+y+'%;width:'+w+'%';d.innerHTML='<svg viewBox="0 0 100 100"><use href="#'+k+'"/></svg>';d.classList.toggle('hid',hid.has(k));ab.append(d);return d}
 function info(m){if(m)sn.textContent=m;if(sel){const r=ab.getBoundingClientRect();nm.textContent=NM[sel.dataset.k]+' · L';ps.textContent='X '+Math.round(parseFloat(sel.style.left)/100*r.width)+' · Y '+Math.round(parseFloat(sel.style.top)/100*r.height)}else{nm.textContent='Не выбран';ps.textContent='X – · Y –'}cn.textContent=pl(ab.children.length)}
 function pick(o){if(sel)sel.classList.remove('sel');sel=o;if(o)o.classList.add('sel');info()}
 function init(){mk('book',12,36,36);mk('phone',62,8,17);mk('puzzle',52,50,26);mk('coin',12,8,17);pick(null)}
 function add(k){if(ab.children.length>=9)return toast('На демо-холсте максимум 9 объектов');const o=mk(k,8+Math.random()*58,8+Math.random()*48,22);o.classList.add('pop');o.style.zIndex=++z;pick(o);info('Добавлено: '+NM[k])}
 init();info();
-ab.addEventListener('pointerdown',e=>{const o=e.target.closest('.ob');if(!o)return pick(null);pick(o);o.style.zIndex=++z;dg={o,r:ab.getBoundingClientRect(),sx:e.clientX,sy:e.clientY,ox:parseFloat(o.style.left),oy:parseFloat(o.style.top)};o.classList.add('drag');cs.textContent='Держу';ab.setPointerCapture(e.pointerId)});
+ab.addEventListener('pointerdown',e=>{const o=e.target.closest('.ob');if(!o)return pick(null);pick(o);o.style.zIndex=++z;dg={o,r:ab.getBoundingClientRect(),sx:e.clientX,sy:e.clientY,ox:parseFloat(o.style.left),oy:parseFloat(o.style.top)};o.classList.add('drag');ab.setPointerCapture(e.pointerId)});
 ab.addEventListener('pointermove',e=>{if(!dg)return;const{o,r}=dg,w=o.offsetWidth/r.width*100,hh=o.offsetHeight/r.height*100;o.style.left=cl(dg.ox+(e.clientX-dg.sx)/r.width*100,-3,103-w)+'%';o.style.top=cl(dg.oy+(e.clientY-dg.sy)/r.height*100,-3,103-hh)+'%';info('Объект перемещён')});
-const end=()=>{if(dg){dg.o.classList.remove('drag');cs.textContent='Двигай';dg=null}};
+const end=()=>{if(dg){dg.o.classList.remove('drag');dg=null}};
 ab.addEventListener('pointerup',end);ab.addEventListener('pointercancel',end);
 $$('.pl button').forEach(b=>b.onclick=()=>add(b.dataset.k));
 $('#add').onclick=()=>add(['book','phone','puzzle','coin'][Math.floor(Math.random()*4)]);
@@ -273,7 +270,6 @@ const mq=$('.mq div'),w=['Книга','✦','Смартфон','✦','Пазл',
 mq.innerHTML=w+w;
 const aur=$('#aur');let mx=innerWidth/2,my=innerHeight/2,cx=mx,cy=my,ax=mx,ay=my,rate=1,ly=scrollY;
 addEventListener('pointermove',e=>{mx=e.clientX;my=e.clientY;cur.classList.add('on')});
-document.addEventListener('pointerover',e=>{const d=e.target.closest('[data-cur]'),b=e.target.closest('button,a,input');cur.classList.toggle('card-h',!!d);cur.classList.toggle('link-h',!d&&!!b)});
 document.addEventListener('pointerleave',()=>cur.classList.remove('on'));
 if(!rm){const an=mq.getAnimations()[0];
 (function f(){cx+=(mx-cx)*.22;cy+=(my-cy)*.22;ax+=(mx-ax)*.06;ay+=(my-ay)*.06;

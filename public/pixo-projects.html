@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -104,11 +104,8 @@ h1>span{display:block}
 .nf{grid-column:1/-1;display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:32px;border:1.5px dashed var(--ln);border-radius:28px;color:var(--mut)}
 footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;padding-block:64px 48px;color:var(--mut);font-size:14px}
 #cur{position:fixed;left:0;top:0;z-index:60;pointer-events:none}
-#cur i{position:absolute;left:0;top:0;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--v);display:grid;place-items:center;color:#fff;font:700 12px Manrope,sans-serif;font-style:normal;opacity:0;transition:width .35s cubic-bezier(.3,1.4,.4,1),height .35s cubic-bezier(.3,1.4,.4,1),margin .35s cubic-bezier(.3,1.4,.4,1),opacity .3s}
+#cur i{position:absolute;left:0;top:0;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:var(--v);opacity:0;transition:opacity .3s}
 #cur.on i{opacity:1}
-#cur.card-h i{width:76px;height:76px;margin:-38px 0 0 -38px;opacity:.92}
-#cur.link-h i{width:44px;height:44px;margin:-22px 0 0 -22px;opacity:.3}
-#cur span{opacity:0;transition:opacity .2s}#cur.card-h span{opacity:1}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));translate:-50% 160%;background:var(--ink);color:var(--bg);padding:14px 22px;border-radius:99px;font-weight:700;transition:translate .5s cubic-bezier(.3,1.4,.4,1);z-index:70;max-width:calc(100vw - 32px);text-align:center}
 .toast.on{translate:-50% 0}
 @media(hover:none){#cur,#aur{display:none}}
@@ -128,7 +125,7 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;paddin
 <symbol id="pen" viewBox="0 0 100 100"><g stroke="#1a1033" stroke-width="3" stroke-linejoin="round" transform="rotate(35 50 50)"><rect x="43" y="4" width="14" height="72" rx="4" fill="#ff8fb1"/><path d="M43 76h14l-7 18z" fill="#fff"/><rect x="43" y="14" width="14" height="9" fill="#2a2147"/></g></symbol>
 </defs></svg>
 <div id="aur"></div>
-<div id="cur"><i><span></span></i></div>
+<div id="cur"><i></i></div>
 <div class="wrap">
 <nav class="nav">
 <a class="logo" href="#" data-pixo="landing"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="1" y="1" width="11" height="14" rx="3" fill="#8b6cff"/><rect x="14" y="1" width="11" height="8" rx="3" fill="#b9a6ff"/><rect x="1" y="17" width="8" height="8" rx="3" fill="#b9a6ff"/><rect x="11" y="11" width="14" height="14" rx="3" fill="#6f4bff"/></svg>Pixo</a>
@@ -146,7 +143,7 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;paddin
 <p class="hp">Открой последнюю сцену или начни новую. Всё сохраняется на этом устройстве.</p>
 <div class="row"><button class="btn" id="go">Продолжить <i>→</i></button><button class="btn g" data-new>Чистый холст</button></div>
 </div>
-<div class="ws" id="ws" data-px data-cur="Продолжить">
+<div class="ws" id="ws" data-px>
 <div class="cv2" id="fc"><div id="fs" style="display:contents"></div>
 <span class="cu" style="left:10%;top:18%"><svg viewBox="0 0 22 22"><path d="M3 2l15 7-6.500 2L9 18z"/></svg><b>Вы</b></span>
 <span class="cu b" style="left:60%;top:50%"><svg viewBox="0 0 22 22"><path d="M3 2l15 7-6.500 2L9 18z"/></svg><b>Дизайнер</b></span>
@@ -174,38 +171,47 @@ const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],rm=
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const NM={book:'Книга',phone:'Смартфон',puzzle:'Пазл',coin:'Монета',lamp:'Лампа',phones:'Наушники',note:'Блокнот',pen:'Ручка'};
 const pl=k=>k+(k%10==1&&k%100!=11?' объект':(k%10>1&&k%10<5&&(k%100<12||k%100>14))?' объекта':' объектов');
-/* ДАННЫЕ: замените массив P своими проектами. o = [символ, x%, y%, размер, поворот°, глубина параллакса] */
+/* Projects arrive from the app's local IndexedDB store. */
 const PAL=['#d8ccfa','#ffe9a8','#bfeedd','#ffd0e0'];
-let P=[
-{id:1,t:'Лампа и заметки',pal:PAL[0],d:'26 окт.',o:[['lamp',8,10,66,-4,1.2],['note',58,8,34,6,.8],['pen',64,50,40,0,1.5],['coin',14,62,26,0,.7]]},
-{id:2,t:'Урок: основы SVG',pal:PAL[1],d:'25 окт.',o:[['book',30,8,68,-6,1],['puzzle',62,40,50,8,1.4],['phone',6,40,48,0,.8]]},
-{id:3,t:'Без названия',pal:PAL[0],d:'26 окт.',o:[]},
-{id:4,t:'Обложка подкаста',pal:PAL[3],d:'24 окт.',o:[['phones',34,12,64,0,1.2],['note',6,52,38,-8,.7],['coin',68,56,30,0,1.5]]},
-{id:5,t:'Открытка к осени',pal:PAL[2],d:'22 окт.',o:[['book',8,18,58,4,1],['pen',60,12,46,0,1.4],['puzzle',52,52,40,-6,.9]]},
-{id:6,t:'Карточка курса',pal:PAL[1],d:'20 окт.',o:[['phone',14,12,60,-4,1.2],['lamp',46,18,62,0,.8],['coin',70,60,28,0,1.5]]},
-{id:7,t:'Афиша встречи',pal:PAL[0],d:'18 окт.',o:[['puzzle',10,16,62,-10,1],['phones',48,8,58,0,1.3],['book',60,50,44,6,.8]]},
-{id:8,t:'Тест палитры',pal:PAL[3],d:'15 окт.',o:[['coin',12,30,42,0,1],['note',44,12,50,-6,1.3]]}
-],uid=9,cnt=0,f='all',q='',qr='';
+let P=[],uid=1,cnt=0,f='all',q='',qr='',hasParentData=false;
 const SP=[4,4,4,5,7,7,5,4,4,4];
-const g=$('#g'),sc=p=>p.o.map(([k,x,y,w,r,z])=>'<svg class="o" style="--x:'+x+';--y:'+y+';--w:'+w+';--r:'+r+';--z:'+z+'" viewBox="0 0 100 100"><use href="#'+k+'"/></svg>').join('');
+const g=$('#g'),itemsOf=p=>(p.items||[]).filter(item=>item.visible!==false&&(item.opacity??1)>0),itemCount=p=>Array.isArray(p.items)?itemsOf(p).length:(p.o||[]).length;
+const sc=p=>{
+if(Array.isArray(p.items)){
+const W=p.format?.width||1200,H=p.format?.height||800;
+return itemsOf(p).map(item=>'<svg class="o" style="left:'+((item.x||0)/W*100)+'%;top:'+((item.y||0)/H*100)+'%;width:'+((item.width||1)/W*100)+'%;height:'+((item.height||1)/H*100)+'%;--px:0;--py:0;--z:0;rotate:'+(Number(item.rotation)||0)+'deg;opacity:'+(Number.isFinite(item.opacity)?item.opacity:1)+'" viewBox="'+esc(item.viewBox||'0 0 100 100')+'" preserveAspectRatio="xMidYMid meet">'+item.markup+'</svg>').join('')
+}
+return(p.o||[]).map(([k,x,y,w,r,z])=>'<svg class="o" style="--x:'+x+';--y:'+y+';--w:'+w+';--r:'+r+';--z:'+z+'" viewBox="0 0 100 100"><use href="#'+k+'"/></svg>').join('')
+};
 function card(p,i,all){
-const n=p.o.length,tg=[...new Set(p.o.map(o=>NM[o[0]]))].slice(0,3);
-return '<article class="pc'+(all||p.fresh?' in':'')+'" data-id="'+p.id+'" data-px data-cur="Открыть" style="--s:'+SP[(i+1)%SP.length]+';--art:'+p.pal+';--i:'+i+'"><div class="cv2">'+
-(n?sc(p)+'<div class="tg">'+tg.map(t=>'<span>'+t+'</span>').join('')+'</div>':'<div class="em"><svg class="gh" viewBox="0 0 100 100"><use href="#puzzle"/></svg>Пока нет объектов</div>')+
-'</div><div class="pi"><div><h3><button class="open">'+esc(p.t)+'</button></h3><p>'+pl(n)+', 1200 × 800</p><small>Изменён '+p.d+'</small></div><div class="mw"><button class="mn" aria-label="Меню проекта">···</button><div class="mu"><button data-a="dup">Дублировать</button><button data-a="del">Удалить</button></div></div></div></article>'}
-function feat(){const p=P.find(p=>p.o.length);if(!p)return;$('#ws').style.setProperty('--art',p.pal);$('#fs').innerHTML=sc(p);$('#ft').textContent=p.t;$('#fm').textContent=pl(p.o.length)+', изменён '+p.d}
+const n=itemCount(p),tg=Array.isArray(p.items)?[...new Set(itemsOf(p).map(o=>o.name))].slice(0,3):[...new Set((p.o||[]).map(o=>NM[o[0]]))].slice(0,3),W=p.format?.width||1200,H=p.format?.height||800;
+return '<article class="pc'+(all||p.fresh?' in':'')+'" data-id="'+esc(String(p.id))+'" data-px style="--s:'+SP[(i+1)%SP.length]+';--art:'+(p.pal||p.backgroundColor||PAL[0])+';--i:'+i+'"><div class="cv2">'+
+(n?sc(p)+'<div class="tg">'+tg.map(t=>'<span>'+esc(t)+'</span>').join('')+'</div>':'<div class="em"><svg class="gh" viewBox="0 0 100 100"><use href="#puzzle"/></svg>Пока нет объектов</div>')+
+'</div><div class="pi"><div><h3><button class="open">'+esc(p.name||p.t||'Без названия')+'</button></h3><p>'+pl(n)+', '+W+' × '+H+'</p><small>Изменён '+esc(p.d||'сейчас')+'</small></div><div class="mw"><button class="mn" aria-label="Меню проекта">···</button><div class="mu"><button data-a="rename">Переименовать</button><button data-a="dup">Дублировать</button><button data-a="del">Удалить</button></div></div></div></article>'}
+function feat(){const p=P.find(p=>itemCount(p))||P[0];if(!p)return;$('#ws').style.setProperty('--art',p.pal||p.backgroundColor||PAL[0]);$('#fs').innerHTML=sc(p);$('#ft').textContent=p.name||p.t;const n=itemCount(p);$('#fm').textContent=pl(n)+', изменён '+(p.d||'сейчас')}
 function render(all){
-const full=P.filter(p=>p.o.length).length;
+const full=P.filter(p=>itemCount(p)).length;
 $$('.fp').forEach(b=>{const k=b.dataset.f;b.classList.toggle('on',k===f);b.querySelector('i').textContent=k==='all'?P.length:k==='full'?full:P.length-full});
-const v=P.filter(p=>(f==='all'||(f==='full')===!!p.o.length)&&p.t.toLowerCase().includes(q));
-g.innerHTML='<button class="nw" data-new data-px data-cur="Создать" style="--s:4"><span class="pls">+</span><svg class="fo" style="right:8%;top:8%;width:34%;--d:24" viewBox="0 0 100 100"><use href="#puzzle"/></svg><svg class="fo" style="right:36%;top:30%;width:28%;--d:44" viewBox="0 0 100 100"><use href="#book"/></svg><b>Новый проект</b><small>Чистый холст 1200 × 800</small></button>'+
+const v=P.filter(p=>(f==='all'||(f==='full')===!!itemCount(p))&&(p.name||p.t||'').toLowerCase().includes(q));
+g.innerHTML='<button class="nw" data-new data-px style="--s:4"><span class="pls">+</span><svg class="fo" style="right:8%;top:8%;width:34%;--d:24" viewBox="0 0 100 100"><use href="#puzzle"/></svg><svg class="fo" style="right:36%;top:30%;width:28%;--d:44" viewBox="0 0 100 100"><use href="#book"/></svg><b>Новый проект</b><small>Чистый холст 1200 × 800</small></button>'+
 v.map((p,i)=>card(p,i,all)).join('')+
-(v.length?'':'<div class="nf"><b>Ничего не нашлось</b>'+(qr?'<button class="btn" data-new data-name="'+esc(qr)+'">Создать «'+esc(qr)+'» <i>+</i></button>':'В этом фильтре пока пусто.')+'</div>');
-P.forEach(p=>p.fresh=0);feat()}
-const ts=$('.toast');let tt;
+(v.length?'':'<div class="nf"><b>'+(q?'Ничего не нашлось':'Проектов пока нет')+'</b>'+(q&&qr?'<button class="btn" data-new data-name="'+esc(qr)+'">Создать «'+esc(qr)+'» <i>+</i></button>':q?'Попробуйте изменить запрос.':'Создайте первый проект — он сохранится на этом устройстве.')+'</div>');
+P.forEach(p=>p.fresh=0);feat()}const ts=$('.toast');let tt;
 function toast(m){ts.textContent=m;ts.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>ts.classList.remove('on'),2800)}
 const closeM=()=>$$('.mw.open').forEach(w=>{w.classList.remove('open');const d=w.querySelector('[data-a=del]');d.dataset.sure='';d.textContent='Удалить'});
-const notifyParent=type=>{if(window.parent&&window.parent!==window){window.parent.postMessage({type},window.location.origin);return true}return false};
+const notifyParent=(type,payload={})=>{if(window.parent&&window.parent!==window){window.parent.postMessage({type,...payload},window.location.origin);return true}return false};
+window.addEventListener('message',e=>{
+if(e.origin!==window.location.origin||!e.data)return;
+if(e.data.type==='pixo:theme'){document.documentElement.dataset.theme=e.data.theme;return}
+if(e.data.type!=='pixo:projects-data'||!Array.isArray(e.data.projects))return;
+hasParentData=true;
+P=e.data.projects.map(project=>({
+id:String(project.id),name:String(project.name||'Без названия'),updatedAt:project.updatedAt,
+d:project.updatedAt?new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short',year:'numeric'}).format(new Date(project.updatedAt)):'сейчас',
+format:project.format||{width:1200,height:800},backgroundColor:project.backgroundColor||PAL[0],pal:project.transparent?'#d8ccfa':project.backgroundColor||PAL[0],items:Array.isArray(project.items)?project.items:[]
+}));
+render(true)
+});
 document.addEventListener('click',e=>{
 const px=e.target.closest('[data-pixo]');if(px){e.preventDefault();if(notifyParent('pixo:open-'+px.dataset.pixo))return}
 const t=e.target,tz=t.closest('[data-toast]');
@@ -214,14 +220,17 @@ if(!t.closest('.mw'))closeM();
 const m=t.closest('.mn');
 if(m){const w=m.parentElement,o=w.classList.contains('open');closeM();w.classList.toggle('open',!o);return}
 const a=t.closest('[data-a]');
-if(a){const c=a.closest('.pc'),id=+c.dataset.id,i=P.findIndex(p=>p.id===id),p=P[i];
+if(a){const c=a.closest('.pc'),id=c.dataset.id,i=P.findIndex(p=>String(p.id)===id),p=P[i];if(!p)return;
+if(hasParentData&&a.dataset.a==='rename'){notifyParent('pixo:rename-project',{projectId:id});return}
+if(hasParentData&&a.dataset.a==='dup'){notifyParent('pixo:duplicate-project',{projectId:id});return}
 if(a.dataset.a==='dup'){P.splice(i,0,{...p,o:p.o.map(x=>x.slice()),id:uid++,t:p.t+' (копия)',d:'26 окт.',fresh:1});render();toast('Копия создана');return}
 if(!a.dataset.sure){a.dataset.sure=1;a.textContent='Точно удалить?';return}
+if(hasParentData){notifyParent('pixo:delete-project',{projectId:id});return}
 c.classList.add('out');setTimeout(()=>{P.splice(P.findIndex(x=>x.id===id),1);render();toast('Проект удалён')},260);return}
 const nw=t.closest('[data-new]');
-if(nw){const nm=nw.dataset.name||'Без названия'+(++cnt>1?' '+cnt:'');f='all';q='';qr='';$('#q').value='';P.unshift({id:uid++,t:nm,pal:PAL[uid%4],d:'26 окт.',o:[],fresh:1});render();toast('Проект создан: '+nm);return}
+if(nw){if(notifyParent('pixo:create-project'))return;const nm=nw.dataset.name||'Без названия'+(++cnt>1?' '+cnt:'');f='all';q='';qr='';$('#q').value='';P.unshift({id:uid++,t:nm,pal:PAL[uid%4],d:'26 окт.',o:[],fresh:1});render();toast('Проект создан: '+nm);return}
 const fp=t.closest('.fp');if(fp){f=fp.dataset.f;render(true);return}
-const op=t.closest('.open');if(op){if(!notifyParent('pixo:open-editor'))toast('Демо: «'+op.textContent+'» откроется в редакторе');return}
+const op=t.closest('.open');if(op){const projectId=op.closest('.pc')?.dataset.id;if(projectId){if(!notifyParent('pixo:open-project',{projectId}))toast('Демо: «'+op.textContent+'» откроется в редакторе')}else if(!notifyParent('pixo:open-editor'))toast('Демо: «'+op.textContent+'» откроется в редакторе');return}
 if(t.closest('#go,#ws')){if(!notifyParent('pixo:open-editor'))toast('Демо: «'+$('#ft').textContent+'» откроется в редакторе')}});window.addEventListener('message',e=>{if(e.origin===window.location.origin&&e.data&&e.data.type==='pixo:theme'){document.documentElement.dataset.theme=e.data.theme}});
 addEventListener('keydown',e=>{if(e.key==='Escape')closeM()});
 $('#q').oninput=e=>{qr=e.target.value.trim();q=qr.toLowerCase();render(false)};
@@ -235,12 +244,11 @@ if(c){const r=c.getBoundingClientRect();c.style.setProperty('--px',((e.clientX-r
 const b=e.target.closest('.btn');if(b){const r=b.getBoundingClientRect();b.style.translate=(e.clientX-r.left-r.width/2)*.2+'px '+(e.clientY-r.top-r.height/2)*.3+'px'}},{passive:true});
 document.addEventListener('pointerout',e=>{const c=e.target.closest('[data-px]');if(c&&!c.contains(e.relatedTarget)){c.style.setProperty('--px',0);c.style.setProperty('--py',0)}const b=e.target.closest('.btn');if(b&&!b.contains(e.relatedTarget))b.style.translate=''});
 /* курсор и аврора */
-const cur=$('#cur'),cs=cur.querySelector('span'),aur=$('#aur');let mx=innerWidth/2,my=innerHeight/2,cx=mx,cy=my,ax=mx,ay=my;
+const cur=$('#cur'),aur=$('#aur');let mx=innerWidth/2,my=innerHeight/2,cx=mx,cy=my,ax=mx,ay=my;
 addEventListener('pointermove',e=>{mx=e.clientX;my=e.clientY;cur.classList.add('on')});
-document.addEventListener('pointerover',e=>{const d=e.target.closest('[data-cur]'),b=e.target.closest('button,a,input');if(d&&!e.target.closest('.mw'))cs.textContent=d.dataset.cur;cur.classList.toggle('card-h',!!d&&!e.target.closest('.mw'));cur.classList.toggle('link-h',!d&&!!b||!!e.target.closest('.mw'))});
 document.addEventListener('pointerleave',()=>cur.classList.remove('on'));
 if(!rm)(function f(){cx+=(mx-cx)*.22;cy+=(my-cy)*.22;ax+=(mx-ax)*.06;ay+=(my-ay)*.06;cur.style.transform='translate('+cx+'px,'+cy+'px)';aur.style.transform='translate('+ax+'px,'+ay+'px)';requestAnimationFrame(f)})();
-render(true);
+render(true);notifyParent('pixo:request-projects');
 </script>
 </body>
 </html>

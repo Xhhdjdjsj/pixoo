@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { ArrowDown, ArrowUp, Check, ChevronDown, Copy, Download, Eye, EyeOff, Grid2X2, ImagePlus, Layers3, Lock, Loader2, Maximize2, Minus, MoreHorizontal, Palette, Pencil, Plus, RotateCcw, RotateCw, Search, Sparkles, Trash2, Unlock, Upload, X, FolderOpen, Clock3 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, ChevronDown, Copy, Download, Eye, EyeOff, Grid2X2, ImagePlus, Layers3, Lock, Maximize2, Minus, Palette, Pencil, Plus, RotateCcw, RotateCw, Search, Sparkles, Trash2, Unlock, Upload, X, FolderOpen } from 'lucide-react'
 import type { CompositionFormat, CompositionItem, CompositionMode, DetailSize, LibraryComponent, LibraryManifest, PaletteScheme } from './types/composition'
 import { buildComposition, collectSvgColorUsage, exportItems, findComponents, FORMATS, getFamilyCoverage, inferMetadata, makeSceneObject, normalizeHexColor, recolorSvg, reflowComposition, STARTER_PALETTES, switchSceneVariants, trimSvgToContent } from './features/composer/composer'
 import { serializeComposition } from './features/export/SvgExporter'
 import { cleanSvg } from './features/svg-import/SvgSanitizer'
 import { readWorkspaceValue, writeWorkspaceValue } from './features/storage/workspaceStorage'
+import { mergeRecoveredLegacyProjects } from './features/storage/legacyProjectRecovery'
 import './composer.css'
 
 type ResizeHandle = 'nw' | 'ne' | 'se' | 'sw'
@@ -13,6 +14,7 @@ type DragLayout = Pick<CompositionItem, 'x' | 'y' | 'width' | 'height'>
 type StoredPreferences = { paletteId?: string; formatId?: string; size?: DetailSize; backgroundColor?: string; transparent?: boolean; includeBackground?: boolean }
 type LibraryRoleFilter = 'all' | 'main' | 'background'
 type StudioPage = 'landing' | 'gallery' | 'templates' | 'editor'
+const STUDIO_PAGES = new Set<StudioPage>(['landing', 'gallery', 'templates', 'editor'])
 type BackdropId = 'solid' | 'desk' | 'paper' | 'buildplate'
 type ProjectSnapshot = {
   id: string
@@ -26,6 +28,8 @@ type ProjectSnapshot = {
   includeBackground: boolean
   backdropId: BackdropId
   updatedAt: number
+  recoverySource?: 'legacy-project-html'
+  recoveryKey?: string
 }
 type ProjectTemplate = { id: string; name: string; backdropId: BackdropId; objects: Array<{ name: string; role: 'main' | 'background' }> }
 
@@ -200,37 +204,6 @@ function surfaceStyle(color: string, palette: PaletteScheme): CSSProperties {
   return { backgroundColor: color, '--surface-detail': rgba(detail, .34), '--surface-highlight': rgba(highlight, .6) } as CSSProperties
 }
 
-function ProjectPreview({ project, palette, showMeta = true }: { project: Pick<ProjectSnapshot, 'items' | 'formatId' | 'backgroundColor' | 'transparent' | 'backdropId'>; palette: PaletteScheme; showMeta?: boolean }) {
-  const format = FORMATS.find((entry) => entry.id === project.formatId) ?? FORMATS[0]
-  const visibleItems = project.items.filter((item) => item.visible !== false && item.opacity > 0)
-  const geometry = visibleItems.map((item) => {
-    const angle = item.rotation * Math.PI / 180
-    const halfWidth = (Math.abs(item.width * Math.cos(angle)) + Math.abs(item.height * Math.sin(angle))) / 2
-    const halfHeight = (Math.abs(item.width * Math.sin(angle)) + Math.abs(item.height * Math.cos(angle))) / 2
-    const centerX = item.x + item.width / 2
-    const centerY = item.y + item.height / 2
-    return { item, centerX, centerY, halfWidth, halfHeight }
-  })
-  const bounds = geometry.reduce((result, entry) => ({
-    left: Math.min(result.left, entry.centerX - entry.halfWidth),
-    top: Math.min(result.top, entry.centerY - entry.halfHeight),
-    right: Math.max(result.right, entry.centerX + entry.halfWidth),
-    bottom: Math.max(result.bottom, entry.centerY + entry.halfHeight),
-  }), { left: format.width, top: format.height, right: 0, bottom: 0 })
-  const boundsWidth = Math.max(1, bounds.right - bounds.left)
-  const boundsHeight = Math.max(1, bounds.bottom - bounds.top)
-  const previewScale = geometry.length ? Math.min(1.2, format.width * .72 / boundsWidth, format.height * .7 / boundsHeight) : 1
-  const boundsCenterX = (bounds.left + bounds.right) / 2
-  const boundsCenterY = (bounds.top + bounds.bottom) / 2
-  return <div className={`gallery-preview surface-${project.transparent ? 'solid' : project.backdropId}`} style={surfaceStyle(project.transparent ? '#f4f5f3' : project.backgroundColor, palette)}>
-    <div className="gallery-artboard" style={{ aspectRatio: `${format.width} / ${format.height}` }}>
-      {geometry.map(({ item, centerX, centerY }, index) => <span key={item.objectId} className="gallery-object" style={{ left: `${(format.width / 2 + (centerX - boundsCenterX) * previewScale - item.width * previewScale / 2) / format.width * 100}%`, top: `${(format.height / 2 + (centerY - boundsCenterY) * previewScale - item.height * previewScale / 2) / format.height * 100}%`, width: `${item.width * previewScale / format.width * 100}%`, height: `${item.height * previewScale / format.height * 100}%`, transform: `rotate(${item.rotation}deg)`, zIndex: index + 1, opacity: item.opacity }}><SvgPreview markup={recolorSvg(item.markup, item.role, palette)} viewBox={item.viewBox} /></span>)}
-      {!visibleItems.length && <span className="gallery-preview-empty"><Layers3 size={24} /><span>Пока нет объектов</span></span>}
-    </div>
-    {showMeta && <span className="gallery-preview-meta"><span>{visibleItems.length} {visibleItems.length === 1 ? 'объект' : 'объектов'}</span><span>{format.width} × {format.height}</span></span>}
-  </div>
-}
-
 export default function ComposerStudio() {
   const [assets, setAssets] = useState<LibraryComponent[]>([])
   const [items, setItems] = useState<CompositionItem[]>([])
@@ -238,13 +211,9 @@ export default function ComposerStudio() {
   const [loadError, setLoadError] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [page, setPage] = useState<StudioPage>('landing')
-  const [dashboardSection, setDashboardSection] = useState<'projects' | 'library'>('projects')
   const [projects, setProjects] = useState<ProjectSnapshot[]>([])
-  const [projectSearch, setProjectSearch] = useState('')
-  const [openProjectMenu, setOpenProjectMenu] = useState<string | null>(null)
   const [projectDialog, setProjectDialog] = useState<{ mode: 'rename' | 'delete'; projectId: string; name: string } | null>(null)
   const [projectNameDraft, setProjectNameDraft] = useState('')
-  const [projectActionPending, setProjectActionPending] = useState(false)
   const [currentProjectId, setCurrentProjectId] = useState('')
   const [mode, setMode] = useState<CompositionMode>('metaphor')
   const [query, setQuery] = useState('Обучение и цифровые инструменты')
@@ -282,13 +251,12 @@ export default function ComposerStudio() {
   const noticeTimer = useRef<number | undefined>(undefined)
   const projectsRef = useRef<ProjectSnapshot[]>([])
   const projectActionLock = useRef(false)
-  const projectMenuRef = useRef<HTMLDivElement>(null)
   const projectNameInputRef = useRef<HTMLInputElement>(null)
   const landingFrameRef = useRef<HTMLIFrameElement>(null)
   const projectsFrameRef = useRef<HTMLIFrameElement>(null)
   const templateFrameRef = useRef<HTMLIFrameElement>(null)
   const editorFrameRef = useRef<HTMLIFrameElement>(null)
-  const landingActionsRef = useRef<{ openEditor: () => void; openProjects: () => void; openTemplate: (templateId: string) => void }>({ openEditor: () => {}, openProjects: () => {}, openTemplate: () => {} })
+  const landingActionsRef = useRef<{ openEditor: () => void; createProject: () => void; openProjects: () => void; openTemplate: (templateId: string) => void; syncProjects: () => void; openProject: (projectId: string) => void; duplicateProject: (projectId: string) => void; requestDeleteProject: (projectId: string) => void; renameProject: (projectId: string) => void; sendEditorProjectData: () => void; applyEditorChange: (projectId: string, state: unknown) => void }>({ openEditor: () => {}, createProject: () => {}, openProjects: () => {}, openTemplate: () => {}, syncProjects: () => {}, openProject: () => {}, duplicateProject: () => {}, requestDeleteProject: () => {}, renameProject: () => {}, sendEditorProjectData: () => {}, applyEditorChange: () => {} })
 
   useEffect(() => {
     const handleLandingMessage = (event: MessageEvent) => {
@@ -296,10 +264,21 @@ export default function ComposerStudio() {
       if (event.origin !== window.location.origin || !knownFrame) return
       if (typeof event.data !== 'object' || event.data === null) return
       if (event.data.type === 'pixo:open-editor') landingActionsRef.current.openEditor()
+      if (event.data.type === 'pixo:create-project') landingActionsRef.current.createProject()
       if (event.data.type === 'pixo:open-projects') landingActionsRef.current.openProjects()
+      if (event.data.type === 'pixo:request-projects' && event.source === projectsFrameRef.current?.contentWindow) landingActionsRef.current.syncProjects()
+      if (event.source === projectsFrameRef.current?.contentWindow && typeof event.data.projectId === 'string') {
+        if (event.data.type === 'pixo:open-project') landingActionsRef.current.openProject(event.data.projectId)
+        if (event.data.type === 'pixo:duplicate-project') landingActionsRef.current.duplicateProject(event.data.projectId)
+        if (event.data.type === 'pixo:delete-project') landingActionsRef.current.requestDeleteProject(event.data.projectId)
+        if (event.data.type === 'pixo:rename-project') landingActionsRef.current.renameProject(event.data.projectId)
+      }
+      if (event.data.type === 'pixo:open-library') openLibrarySection()
       if (event.data.type === 'pixo:open-templates') setPage('templates')
       if (event.data.type === 'pixo:open-landing') setPage('landing')
       if (event.data.type === 'pixo:open-template' && typeof event.data.templateId === 'string') landingActionsRef.current.openTemplate(event.data.templateId)
+      if (event.source === editorFrameRef.current?.contentWindow && event.data.type === 'pixo:editor-ready') landingActionsRef.current.sendEditorProjectData()
+      if (event.source === editorFrameRef.current?.contentWindow && event.data.type === 'pixo:editor-change' && typeof event.data.projectId === 'string') landingActionsRef.current.applyEditorChange(event.data.projectId, event.data.state)
       if (event.data.type === 'pixo:set-theme' && (event.data.theme === 'light' || event.data.theme === 'dark')) {
         landingFrameRef.current?.contentWindow?.postMessage({ type: 'pixo:theme', theme: event.data.theme }, window.location.origin)
       }
@@ -325,26 +304,20 @@ export default function ComposerStudio() {
     })
     return { ...template, items: buildComposition(format, chosen) }
   }), [assets, format, size])
-  const visibleProjects = useMemo(() => {
-    const needle = projectSearch.trim().toLocaleLowerCase('ru')
-    return projects.filter((project) => !needle || project.name.toLocaleLowerCase('ru').includes(needle))
-  }, [projects, projectSearch])
-
   useEffect(() => { projectsRef.current = projects }, [projects])
 
   useEffect(() => {
-    if (!openProjectMenu) return
-    const closeOnOutsideClick = (event: PointerEvent) => {
-      if (event.target instanceof Node && !projectMenuRef.current?.contains(event.target)) setOpenProjectMenu(null)
-    }
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpenProjectMenu(null) }
-    document.addEventListener('pointerdown', closeOnOutsideClick)
-    document.addEventListener('keydown', closeOnEscape)
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsideClick)
-      document.removeEventListener('keydown', closeOnEscape)
-    }
-  }, [openProjectMenu])
+    if (!ready || page === 'landing') return
+    void writeWorkspaceValue('composer-current-page', page).catch(() => {})
+  }, [page, ready])
+
+  useEffect(() => {
+    if (page === 'gallery' && ready && !loadError) landingActionsRef.current.syncProjects()
+  }, [projects, page, ready, loadError])
+
+  useEffect(() => {
+    if (page === 'editor') landingActionsRef.current.sendEditorProjectData()
+  }, [page, currentProjectId, ready])
 
   useEffect(() => {
     if (!projectDialog) return
@@ -359,7 +332,7 @@ export default function ComposerStudio() {
     void (async () => {
       try {
         const removeEmptyProjects = new URLSearchParams(window.location.search).get('removeEmptyProjects') === '1'
-        const [newAssets, oldAssets, savedItems, preferences, savedPalettes, bundled, savedProjects, savedProjectId, projectsMigrated] = await Promise.all([
+        const [newAssets, oldAssets, savedItems, preferences, savedPalettes, bundled, savedProjects, savedProjectId, savedPage, projectsMigrated, legacyProjectsRecovered, archivedProjects] = await Promise.all([
           readWorkspaceValue<LibraryComponent[] | null>('composer-assets', null),
           readWorkspaceValue<Array<Record<string, unknown>> | null>('assets', null),
           readWorkspaceValue<CompositionItem[] | null>('composer-scene', null),
@@ -368,7 +341,10 @@ export default function ComposerStudio() {
           readBundledManifest(),
           readWorkspaceValue<ProjectSnapshot[] | null>('composer-projects', null),
           readWorkspaceValue<string | null>('composer-current-project', null),
+          readWorkspaceValue<StudioPage | null>('composer-current-page', null),
           readWorkspaceValue<boolean>('composer-projects-migrated', false),
+          readWorkspaceValue<boolean>('pixo-legacy-projects-recovered', false),
+          readWorkspaceValue<ProjectSnapshot[]>('pixo-projects-before-legacy-recovery', []),
         ])
         const legacy = safeStorage<Array<Record<string, unknown>>>('pixo-library-assets', [])
         const chosen = (newAssets?.length ? newAssets : oldAssets?.length ? oldAssets : legacy) as Array<Record<string, unknown>>
@@ -386,12 +362,28 @@ export default function ComposerStudio() {
         const selectedPalette = activePalettes.find((entry) => entry.id === preferences.paletteId) ?? activePalettes[0]
         const preferredSize = preferences.size === 'S' ? 'S' : 'L'
         const preferredFormat = FORMATS.find((entry) => entry.id === preferences.formatId) ?? FORMATS[0]
-        const initialScene = (savedItems ?? []).filter((item) => initialAssets.some((asset) => asset.id === item.assetId))
-        const restoredProjects = (savedProjects ?? []).filter((project) => project && typeof project.id === 'string' && typeof project.name === 'string' && Array.isArray(project.items))
-          .map((project) => ({ ...project, backdropId: BACKDROPS.some((entry) => entry.id === project.backdropId) ? project.backdropId : 'solid', items: project.items.filter((item) => item && initialAssets.some((asset) => asset.id === item.assetId)) }))
+        const initialScene = (savedItems ?? []).filter((item) => item && typeof item.markup === 'string' && typeof item.viewBox === 'string')
+        const storedProjects = (savedProjects ?? []).filter((project) => project && typeof project.id === 'string' && typeof project.name === 'string' && Array.isArray(project.items))
+          .map((project) => ({
+            ...project,
+            backdropId: BACKDROPS.some((entry) => entry.id === project.backdropId) ? project.backdropId : 'solid',
+            items: project.items.length || project.id !== savedProjectId ? project.items : initialScene,
+          }))
+        const emptyPlaceholders = legacyProjectsRecovered ? [] : storedProjects.filter((project) => project.name.trim().toLocaleLowerCase('ru') === 'новый проект' && project.items.length === 0)
+        const projectArchive = [...archivedProjects, ...storedProjects.filter((project) => !archivedProjects.some((archived) => archived.id === project.id))]
+        const projectsToRecover = emptyPlaceholders.length
+          ? storedProjects.filter((project) => !emptyPlaceholders.some((placeholder) => placeholder.id === project.id))
+          : storedProjects
+        const restoredProjects = legacyProjectsRecovered ? storedProjects : mergeRecoveredLegacyProjects(projectsToRecover, initialAssets, selectedPalette.id)
         const projectsToRestore = removeEmptyProjects ? restoredProjects.filter((project) => project.items.length > 0) : restoredProjects
         const removedEmptyProjectCount = restoredProjects.length - projectsToRestore.length
-        const activeSavedProject = projectsToRestore.find((project) => project.id === savedProjectId) ?? projectsToRestore[0]
+        const currentSavedProject = projectsToRestore.find((project) => project.id === savedProjectId) ?? projectsToRestore[0]
+        const activeSavedProject = !legacyProjectsRecovered
+          && currentSavedProject
+          && !currentSavedProject.items.length
+          && currentSavedProject.name.toLocaleLowerCase('ru').startsWith('новый проект')
+          ? projectsToRestore.find((project) => project.recoverySource === 'legacy-project-html' && project.items.length > 0) ?? currentSavedProject
+          : currentSavedProject
         const activeProjectPalette = activePalettes.find((entry) => entry.id === activeSavedProject?.paletteId) ?? selectedPalette
         const hydratedProject: ProjectSnapshot | null = activeSavedProject ?? (!projectsMigrated && initialScene.length ? {
           id: uid(),
@@ -420,22 +412,36 @@ export default function ComposerStudio() {
         setFormat(projectFormat)
         setSize(hydratedProject?.size === 'S' ? 'S' : preferredSize)
         setLibrarySizeFilter(hydratedProject?.size === 'S' ? 'S' : preferredSize)
-        setBackgroundColor(projectPalette.backgroundColors.includes(hydratedProject?.backgroundColor ?? '') ? hydratedProject!.backgroundColor : projectPalette.backgroundColors[0])
+        setBackgroundColor(hydratedProject?.recoverySource === 'legacy-project-html' || projectPalette.backgroundColors.includes(hydratedProject?.backgroundColor ?? '') ? hydratedProject!.backgroundColor : projectPalette.backgroundColors[0])
         setTransparent(hydratedProject?.transparent ?? Boolean(preferences.transparent))
         setIncludeBackground(hydratedProject?.includeBackground ?? (preferences.includeBackground !== false))
         setBackdropId(hydratedProject?.backdropId ?? 'solid')
         if (removeEmptyProjects) {
-          await writeWorkspaceValue('composer-projects', nextProjects)
+          await Promise.all([
+            writeWorkspaceValue('composer-projects', nextProjects),
+            writeWorkspaceValue('composer-current-project', hydratedProject?.id ?? ''),
+            writeWorkspaceValue('composer-projects-migrated', true),
+            writeWorkspaceValue('pixo-legacy-projects-recovered', true),
+            writeWorkspaceValue('pixo-projects-before-legacy-recovery', projectArchive),
+          ])
           const cleanUrl = new URL(window.location.href)
           cleanUrl.searchParams.delete('removeEmptyProjects')
           window.history.replaceState(null, '', cleanUrl)
           setPage('gallery')
           showNotice(removedEmptyProjectCount ? `Удалено пустых проектов: ${removedEmptyProjectCount}.` : 'Пустых проектов не найдено.')
         } else {
-          void writeWorkspaceValue('composer-projects', nextProjects)
+          await Promise.all([
+            writeWorkspaceValue('composer-projects', nextProjects),
+            writeWorkspaceValue('composer-current-project', hydratedProject?.id ?? ''),
+            writeWorkspaceValue('composer-projects-migrated', true),
+            writeWorkspaceValue('pixo-legacy-projects-recovered', true),
+            writeWorkspaceValue('pixo-projects-before-legacy-recovery', projectArchive),
+          ])
+          const pageToRestore = savedPage && savedPage !== 'landing' && STUDIO_PAGES.has(savedPage)
+            ? savedPage
+            : hydratedProject ? 'editor' : projectsToRestore.length ? 'gallery' : 'landing'
+          setPage(pageToRestore === 'editor' && !hydratedProject ? 'gallery' : pageToRestore)
         }
-        void writeWorkspaceValue('composer-current-project', hydratedProject?.id ?? '')
-        void writeWorkspaceValue('composer-projects-migrated', true)
       } catch {
         if (alive) setLoadError(true)
       } finally {
@@ -449,7 +455,8 @@ export default function ComposerStudio() {
     if (!ready || !currentProjectId) return
     const timer = window.setTimeout(() => {
       setSaved(false)
-      const snapshot: ProjectSnapshot = { id: currentProjectId, name: projectsRef.current.find((project) => project.id === currentProjectId)?.name ?? 'Новый проект', items, formatId: format.id, size, paletteId: palette.id, backgroundColor, transparent, includeBackground, backdropId, updatedAt: Date.now() }
+      const currentProject = projectsRef.current.find((project) => project.id === currentProjectId)
+      const snapshot: ProjectSnapshot = { id: currentProjectId, name: currentProject?.name ?? 'Новый проект', items, formatId: format.id, size, paletteId: palette.id, backgroundColor, transparent, includeBackground, backdropId, updatedAt: Date.now(), recoverySource: currentProject?.recoverySource, recoveryKey: currentProject?.recoveryKey }
       const nextProjects = projectsRef.current.some((project) => project.id === currentProjectId)
         ? projectsRef.current.map((project) => project.id === currentProjectId ? snapshot : project)
         : [snapshot, ...projectsRef.current]
@@ -549,7 +556,6 @@ export default function ComposerStudio() {
   async function saveAndOpenProject(project: ProjectSnapshot, showTemplateNotice = false) {
     if (projectActionLock.current) return
     projectActionLock.current = true
-    setProjectActionPending(true)
     const nextProjects = [project, ...projectsRef.current.filter((entry) => entry.id !== project.id)]
     projectsRef.current = nextProjects
     setProjects(nextProjects)
@@ -568,7 +574,7 @@ export default function ComposerStudio() {
       setLibrarySizeFilter(project.size === 'S' ? 'S' : 'L')
       const projectPalette = palettes.find((entry) => entry.id === project.paletteId) ?? palettes[0]
       setPalette(projectPalette)
-      setBackgroundColor(projectPalette.backgroundColors.includes(project.backgroundColor) ? project.backgroundColor : projectPalette.backgroundColors[0])
+      setBackgroundColor(project.recoverySource === 'legacy-project-html' || projectPalette.backgroundColors.includes(project.backgroundColor) ? project.backgroundColor : projectPalette.backgroundColors[0])
       setTransparent(project.transparent)
       setIncludeBackground(project.includeBackground)
       setBackdropId(project.backdropId)
@@ -581,7 +587,6 @@ export default function ComposerStudio() {
         showNotice(`Создан проект «${project.name}» из исходных SVG-компонентов.`)
       }
       projectActionLock.current = false
-      setProjectActionPending(false)
     }
   }
 
@@ -593,8 +598,13 @@ export default function ComposerStudio() {
     void saveAndOpenProject(project)
   }
 
+  function continueProject() {
+    const project = projectsRef.current.find((entry) => entry.id === currentProjectId) ?? projectsRef.current[0]
+    if (project) openSavedProject(project)
+    else createProject()
+  }
+
   function openSavedProject(project: ProjectSnapshot) {
-    setOpenProjectMenu(null)
     setCurrentProjectId(project.id)
     setItems(project.items)
     setFormat(FORMATS.find((entry) => entry.id === project.formatId) ?? FORMATS[0])
@@ -602,7 +612,7 @@ export default function ComposerStudio() {
     setLibrarySizeFilter(project.size === 'S' ? 'S' : 'L')
     setPalette(palettes.find((entry) => entry.id === project.paletteId) ?? palettes[0])
     const selectedPalette = palettes.find((entry) => entry.id === project.paletteId) ?? palettes[0]
-    setBackgroundColor(selectedPalette.backgroundColors.includes(project.backgroundColor) ? project.backgroundColor : selectedPalette.backgroundColors[0])
+    setBackgroundColor(project.recoverySource === 'legacy-project-html' || selectedPalette.backgroundColors.includes(project.backgroundColor) ? project.backgroundColor : selectedPalette.backgroundColors[0])
     setTransparent(project.transparent)
     setIncludeBackground(project.includeBackground)
     setBackdropId(project.backdropId ?? 'solid')
@@ -621,7 +631,6 @@ export default function ComposerStudio() {
   }
 
   function beginProjectRename(project: ProjectSnapshot) {
-    setOpenProjectMenu(null)
     setProjectNameDraft(project.name)
     setProjectDialog({ mode: 'rename', projectId: project.id, name: project.name })
   }
@@ -643,8 +652,6 @@ export default function ComposerStudio() {
   async function duplicateProject(project: ProjectSnapshot) {
     if (projectActionLock.current) return
     projectActionLock.current = true
-    setProjectActionPending(true)
-    setOpenProjectMenu(null)
     const duplicate: ProjectSnapshot = {
       ...project,
       id: uid(),
@@ -661,24 +668,28 @@ export default function ComposerStudio() {
     } catch { showNotice('Копия создана, но не удалось сохранить её в браузере.') }
     finally {
       projectActionLock.current = false
-      setProjectActionPending(false)
     }
   }
 
-  async function confirmProjectDelete() {
-    if (!projectDialog || projectDialog.mode !== 'delete') return
-    const nextProjects = projectsRef.current.filter((project) => project.id !== projectDialog.projectId)
+  async function deleteProjectById(projectId: string) {
+    const nextProjects = projectsRef.current.filter((project) => project.id !== projectId)
     projectsRef.current = nextProjects
     setProjects(nextProjects)
-    if (currentProjectId === projectDialog.projectId) {
+    if (currentProjectId === projectId) {
       setCurrentProjectId('')
       void writeWorkspaceValue('composer-current-project', '')
     }
-    setProjectDialog(null)
     try {
       await writeWorkspaceValue('composer-projects', nextProjects)
       showNotice('Проект удалён.')
     } catch { showNotice('Проект удалён из списка, но не удалось обновить локальное хранилище.') }
+  }
+
+  async function confirmProjectDelete() {
+    if (!projectDialog || projectDialog.mode !== 'delete') return
+    const projectId = projectDialog.projectId
+    setProjectDialog(null)
+    await deleteProjectById(projectId)
   }
 
   function retryProjectLoad() {
@@ -693,15 +704,87 @@ export default function ComposerStudio() {
 
   function returnToProjects() {
     setPage('gallery')
-    setDashboardSection('projects')
     setSelectedId(null)
-    window.requestAnimationFrame(() => document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
 
   function openLibrarySection() {
-    setPage('gallery')
-    setDashboardSection('library')
-    window.requestAnimationFrame(() => document.getElementById('library')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    setActivePanel('components')
+    setPage('editor')
+  }
+
+  function sendEditorProjectData() {
+    const frame = editorFrameRef.current?.contentWindow
+    if (!frame || !currentProjectId || !ready) return
+    frame.postMessage({
+      type: 'pixo:load-project',
+      project: {
+        id: currentProjectId,
+        name: projectsRef.current.find((project) => project.id === currentProjectId)?.name ?? 'Новый проект',
+        items,
+        formatId: format.id,
+        size,
+        paletteId: palette.id,
+        backgroundColor,
+        transparent,
+        includeBackground,
+        backdropId,
+      },
+      assets,
+      palettes,
+    }, window.location.origin)
+  }
+
+  function applyEditorChange(projectId: string, value: unknown) {
+    if (typeof value !== 'object' || value === null || projectId !== currentProjectId) return
+    const state = value as Record<string, unknown>
+    if (!Array.isArray(state.items) || !currentProjectId) return
+    const selectedFormat = FORMATS.find((entry) => entry.id === state.formatId)
+    const selectedPalette = palettes.find((entry) => entry.id === state.paletteId)
+    const changedItems = state.items as CompositionItem[]
+    const currentProject = projectsRef.current.find((project) => project.id === currentProjectId)
+    const snapshot: ProjectSnapshot = {
+      ...(currentProject ?? { id: currentProjectId, name: 'Новый проект', items: [], formatId: format.id, size, paletteId: palette.id, backgroundColor, transparent, includeBackground, backdropId, updatedAt: Date.now() }),
+      name: typeof state.name === 'string' ? state.name : currentProject?.name ?? 'Новый проект',
+      items: changedItems,
+      formatId: selectedFormat?.id ?? currentProject?.formatId ?? format.id,
+      size: state.size === 'S' || state.size === 'L' ? state.size : currentProject?.size ?? size,
+      paletteId: selectedPalette?.id ?? currentProject?.paletteId ?? palette.id,
+      backgroundColor: isHexColor(state.backgroundColor) ? state.backgroundColor : currentProject?.backgroundColor ?? backgroundColor,
+      transparent: typeof state.transparent === 'boolean' ? state.transparent : currentProject?.transparent ?? transparent,
+      includeBackground: typeof state.includeBackground === 'boolean' ? state.includeBackground : currentProject?.includeBackground ?? includeBackground,
+      backdropId: state.backdropId === 'solid' || state.backdropId === 'desk' || state.backdropId === 'paper' || state.backdropId === 'buildplate' ? state.backdropId : currentProject?.backdropId ?? backdropId,
+      updatedAt: Date.now(),
+    }
+    const nextProjects = projectsRef.current.some((project) => project.id === currentProjectId)
+      ? projectsRef.current.map((project) => project.id === currentProjectId ? snapshot : project)
+      : [snapshot, ...projectsRef.current]
+    projectsRef.current = nextProjects
+    setProjects(nextProjects)
+    setItems(changedItems)
+    if (selectedFormat) setFormat(selectedFormat)
+    if (state.size === 'S' || state.size === 'L') {
+      setSize(state.size)
+      setLibrarySizeFilter(state.size)
+    }
+    if (selectedPalette) setPalette(selectedPalette)
+    if (isHexColor(state.backgroundColor)) setBackgroundColor(state.backgroundColor)
+    if (typeof state.transparent === 'boolean') setTransparent(state.transparent)
+    if (typeof state.includeBackground === 'boolean') setIncludeBackground(state.includeBackground)
+    if (state.backdropId === 'solid' || state.backdropId === 'desk' || state.backdropId === 'paper' || state.backdropId === 'buildplate') setBackdropId(state.backdropId)
+    setSaved(false)
+    void Promise.all([
+      writeWorkspaceValue('composer-projects', nextProjects),
+      writeWorkspaceValue('composer-current-project', currentProjectId),
+      writeWorkspaceValue('composer-current-page', 'editor'),
+      writeWorkspaceValue('composer-scene', changedItems),
+      writeWorkspaceValue('composer-preferences', { paletteId: snapshot.paletteId, formatId: snapshot.formatId, size: snapshot.size, backgroundColor: snapshot.backgroundColor, transparent: snapshot.transparent, includeBackground: snapshot.includeBackground } satisfies StoredPreferences),
+    ]).then(() => {
+      setSaved(true)
+      editorFrameRef.current?.contentWindow?.postMessage({ type: 'pixo:editor-saved', projectId: currentProjectId }, window.location.origin)
+    }).catch(() => {
+      setSaved(false)
+      editorFrameRef.current?.contentWindow?.postMessage({ type: 'pixo:editor-save-error', projectId: currentProjectId }, window.location.origin)
+    })
   }
 
   const handleImport = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -1049,70 +1132,51 @@ export default function ComposerStudio() {
   )
 
   landingActionsRef.current = {
-    openEditor: createProject,
+    openEditor: continueProject,
+    createProject,
     openProjects: () => setPage('gallery'),
     openTemplate: (templateId) => {
       const template = templates.find((entry) => entry.id === templateId)
       if (template) openTemplate(template)
     },
-  }
-
-  function renderDashboardNavigation(active: 'projects' | 'templates' | 'library') {
-    return <nav className="dashboard-topbar" aria-label="Навигация Pixo">
-      <a className="dashboard-brand" href="#home" onClick={(event) => { event.preventDefault(); returnToLanding() }} aria-label="Pixo — главная страница"><AppIcon /><strong>Pixo</strong><span className="brand-divider" /><span>STUDIO</span></a>
-      <div className="dashboard-main-nav">
-        <a className={active === 'projects' ? 'active' : ''} href="#projects" onClick={(event) => { event.preventDefault(); returnToProjects() }}>Мои проекты</a>
-        <a className={active === 'templates' ? 'active' : ''} href="#templates" onClick={(event) => { event.preventDefault(); setPage('templates') }}>Шаблоны</a>
-        <a className={active === 'library' ? 'active' : ''} href="#library" onClick={(event) => { event.preventDefault(); openLibrarySection() }}>Библиотека <span>{familyCoverage.total}</span></a>
-      </div>
-      <span className="dashboard-local-badge" title="Проекты хранятся только в этом браузере"><i /> Сохранено локально</span>
-    </nav>
+    syncProjects: () => projectsFrameRef.current?.contentWindow?.postMessage({
+      type: 'pixo:projects-data',
+      projects: projectsRef.current.map((project) => {
+        const projectPalette = palettes.find((entry) => entry.id === project.paletteId) ?? palettes[0]
+        return {
+          id: project.id,
+          name: project.name,
+          updatedAt: project.updatedAt,
+          format: FORMATS.find((entry) => entry.id === project.formatId) ?? FORMATS[0],
+          backgroundColor: project.backgroundColor,
+          transparent: project.transparent,
+          items: project.items.map((item) => ({ ...item, markup: item.sourceFileId?.startsWith('recovered-project-html:') ? item.markup : projectPalette ? recolorSvg(item.markup, item.role, projectPalette) : item.markup })),
+        }
+      }),
+    }, window.location.origin),
+    openProject: (projectId) => {
+      const project = projectsRef.current.find((entry) => entry.id === projectId)
+      if (project) openSavedProject(project)
+    },
+    duplicateProject: (projectId) => {
+      const project = projectsRef.current.find((entry) => entry.id === projectId)
+      if (project) void duplicateProject(project)
+    },
+    requestDeleteProject: (projectId) => {
+      const project = projectsRef.current.find((entry) => entry.id === projectId)
+      if (project) void deleteProjectById(project.id)
+    },
+    renameProject: (projectId) => {
+      const project = projectsRef.current.find((entry) => entry.id === projectId)
+      if (project) beginProjectRename(project)
+    },
+    sendEditorProjectData,
+    applyEditorChange,
   }
 
   return (
-    <main className="studio">
-      {page === 'landing' ? <iframe ref={landingFrameRef} className="pixo-landing-frame" title="Pixo — главная страница" src={`${import.meta.env.BASE_URL}pixo-landing.html`} /> : page === 'gallery' ? <><iframe ref={projectsFrameRef} className="pixo-landing-frame" title="Pixo — Мои проекты" src={`${import.meta.env.BASE_URL}pixo-projects.html`} />{false && (!ready ? <div className="gallery-loading"><AppIcon /><span>Загружаю проекты и SVG-библиотеку…</span></div> : loadError ? <div className="gallery-error"><div className="gallery-error-mark"><FolderOpen size={23} /></div><h2>Не удалось загрузить проекты</h2><p>Локальное хранилище временно недоступно. Повторите загрузку.</p><button className="gallery-create-button" onClick={retryProjectLoad}><RotateCw size={15} /> Повторить</button></div> : <section className="studio-projects">
-        {renderDashboardNavigation(dashboardSection)}
-        <div className="projects-gallery-content">
-          <header className="dashboard-hero">
-            <div className="dashboard-hero-copy"><span className="projects-eyebrow"><Sparkles size={13} /> ВЕКТОРНАЯ МАСТЕРСКАЯ</span><h1>Идеи становятся<br /><em>иллюстрациями</em></h1><p>Собирайте сцены из готовых SVG, меняйте палитры и продолжайте с того места, где остановились.</p><div className="dashboard-stats"><span><strong>{projects.length.toString().padStart(2, '0')}</strong><small>проектов</small></span><span><strong>{familyCoverage.total.toString().padStart(2, '0')}</strong><small>компонентов</small></span><span><strong>{templates.filter((entry) => entry.items.length).length.toString().padStart(2, '0')}</strong><small>шаблонов</small></span></div><button className="gallery-create-button" onClick={createProject} disabled={projectActionPending}>{projectActionPending ? <><Loader2 size={16} className="spin" /> Создаём…</> : <><Plus size={17} /> Новый проект <span>↗</span></>}</button></div>
-            <div className="dashboard-hero-art"><span className="hero-art-orbit orbit-one" /><span className="hero-art-orbit orbit-two" /><div className="hero-art-card"><div className="hero-art-label"><span><Sparkles size={12} /> ИЗ БИБЛИОТЕКИ SVG</span><span>01 / 04</span></div><ProjectPreview project={{ items: templates[0]?.items ?? [], formatId: format.id, backgroundColor: '#f0ebfb', transparent: false, backdropId: 'solid' }} palette={palette} showMeta={false} /><div className="hero-art-footer"><span><i /> Можно редактировать</span><span>{size} · {format.width} × {format.height}</span></div></div><span className="hero-float-note"><Layers3 size={15} /> Только исходные объекты</span></div>
-          </header>
-
-          <section className="gallery-section" id="projects">
-            <div className="gallery-section-heading"><div><h2>Мои проекты</h2><span>{projects.length} сохранено</span></div><label className="project-search"><Search size={15} /><input value={projectSearch} onChange={(event) => setProjectSearch(event.target.value)} placeholder="Найти проект…" aria-label="Найти проект" />{projectSearch && <button type="button" onClick={() => setProjectSearch('')} aria-label="Очистить поиск"><X size={14} /></button>}</label></div>
-            {!projects.length && !projectSearch && <p className="gallery-empty-hint">Здесь появятся ваши композиции. Начните с чистого холста или выберите шаблон в разделе «Шаблоны».</p>}
-            <div className="gallery-project-grid">
-              <button className="gallery-create-card" onClick={createProject} disabled={projectActionPending} style={{ animationDelay: '0ms' }}><span className="gallery-create-plus">{projectActionPending ? <Loader2 size={22} className="spin" /> : <Plus size={25} />}</span><strong>Создать проект</strong><small>Начать с чистого холста</small><span className="create-card-arrow">↗</span></button>
-              {visibleProjects.map((project, index) => {
-                const projectPalette = palettes.find((entry) => entry.id === project.paletteId) ?? palette
-                const projectFormat = FORMATS.find((entry) => entry.id === project.formatId) ?? FORMATS[0]
-                const objectCount = project.items.filter((item) => item.visible !== false).length
-                const date = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(project.updatedAt))
-                return <article className="gallery-project-card" key={project.id} style={{ animationDelay: `${(index + 1) * 65}ms` }}>
-                  <button className="gallery-project-open" onClick={() => openSavedProject(project)} aria-label={`Открыть проект ${project.name}`}>
-                    <ProjectPreview project={project} palette={projectPalette} showMeta={false} />
-                    <span className="gallery-project-copy"><strong>{project.name}</strong><span className="gallery-project-meta"><span>{objectCount} {objectCount === 1 ? 'объект' : 'объектов'}</span><i />{projectFormat.width} × {projectFormat.height}</span><small><Clock3 size={12} /> Изменён {date}</small></span>
-                  </button>
-                  <div className="gallery-project-menu-wrap" ref={openProjectMenu === project.id ? projectMenuRef : null}>
-                    <button className="gallery-project-menu-trigger" onClick={() => setOpenProjectMenu((current) => current === project.id ? null : project.id)} aria-label={`Действия для проекта ${project.name}`} aria-haspopup="menu" aria-expanded={openProjectMenu === project.id}><MoreHorizontal size={18} /></button>
-                    {openProjectMenu === project.id && <div className="gallery-project-menu" role="menu" onKeyDown={(event) => { if (event.key === 'Escape') setOpenProjectMenu(null) }}>
-                      <button role="menuitem" onClick={() => beginProjectRename(project)}><Pencil size={14} /> Переименовать</button>
-                      <button role="menuitem" disabled={projectActionPending} onClick={() => void duplicateProject(project)}><Copy size={14} /> Дублировать</button>
-                      <span />
-                      <button className="danger" role="menuitem" onClick={() => { setOpenProjectMenu(null); setProjectDialog({ mode: 'delete', projectId: project.id, name: project.name }) }}><Trash2 size={14} /> Удалить</button>
-                    </div>}
-                  </div>
-                </article>
-              })}
-            </div>
-            {projectSearch && !visibleProjects.length && <div className="gallery-search-empty"><Search size={20} /><strong>Проекты не найдены</strong><span>Попробуйте изменить запрос или сбросьте поиск.</span><button onClick={() => setProjectSearch('')}>Сбросить поиск</button></div>}
-          </section>
-
-          <footer className="projects-gallery-footer" id="library"><span><i /> Библиотека: {assets.length} SVG-компонентов · размеры L/S</span><span>Векторные исходники сохраняются без изменения контуров</span></footer>
-        </div>
-      </section>)}</> : page === 'templates' ? <iframe ref={templateFrameRef} className="pixo-landing-frame" title="Шаблоны из библиотеки" src={`${import.meta.env.BASE_URL}template-library.html`} /> : <><iframe ref={editorFrameRef} className="pixo-landing-frame" title="Pixo — редактор" src={`${import.meta.env.BASE_URL}pixo-editor.html`} />{false && <>
-      <header className="studio-header">
+    <main className={page === 'editor' ? 'studio editor-theme' : 'studio'}>
+      {page === 'landing' ? <iframe ref={landingFrameRef} className="pixo-landing-frame" title="Pixo — главная страница" src={`${import.meta.env.BASE_URL}pixo-landing.html`} /> : page === 'gallery' ? (!ready ? <div className="gallery-loading"><AppIcon /><span>Загружаю проекты и SVG-библиотеку…</span></div> : loadError ? <div className="gallery-error"><div className="gallery-error-mark"><FolderOpen size={23} /></div><h2>Не удалось загрузить проекты</h2><p>Локальное хранилище временно недоступно. Повторите загрузку.</p><button className="gallery-create-button" onClick={retryProjectLoad}><RotateCw size={15} /> Повторить</button></div> : <iframe ref={projectsFrameRef} className="pixo-landing-frame" title="Pixo — Мои проекты" src={`${import.meta.env.BASE_URL}pixo-projects.html`} onLoad={() => landingActionsRef.current.syncProjects()} />): page === 'templates' ? <iframe ref={templateFrameRef} className="pixo-landing-frame" title="Шаблоны из библиотеки" src={`${import.meta.env.BASE_URL}template-library.html`} /> : <><iframe ref={editorFrameRef} className="pixo-landing-frame" title="Pixo — редактор" src={`${import.meta.env.BASE_URL}pixo-editor.html`} onLoad={sendEditorProjectData} />{false && <><header className="studio-header">
         <div className="studio-brand"><button className="studio-brand-home" type="button" onClick={returnToLanding} aria-label="Pixo — главная страница" title="На главную"><AppIcon /><strong>Pixo</strong></button><span className="brand-divider" /><button className="project-title" onClick={returnToProjects} title="Открыть мои проекты"><small>МОИ ПРОЕКТЫ</small><span>{projects.find((project) => project.id === currentProjectId)?.name ?? 'Проект'} <ChevronDown size={13} /></span></button></div>
         <div className="studio-header-actions">
           <span className="studio-project"><i className="save-dot" data-saved={saved} />{saved ? 'Сохранено' : 'Сохраняем…'}</span>
