@@ -10,7 +10,7 @@ type LegacyProjectSnapshot = {
   backgroundColor: string
   transparent: boolean
   includeBackground: boolean
-  backdropId: 'solid' | 'desk' | 'paper' | 'buildplate'
+  backdropId: 'solid' | 'desk' | 'paper' | 'buildplate' | 'palette'
   updatedAt: number
   recoverySource?: 'legacy-project-html'
   recoveryKey?: string

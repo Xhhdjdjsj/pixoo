@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type CSSProperties, type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { ArrowDown, ArrowUp, Check, ChevronDown, Copy, Download, Eye, EyeOff, Grid2X2, ImagePlus, Layers3, Lock, Maximize2, Minus, Palette, Pencil, Plus, RotateCcw, RotateCw, Search, Sparkles, Trash2, Unlock, Upload, X, FolderOpen } from 'lucide-react'
 import type { CompositionFormat, CompositionItem, CompositionMode, DetailSize, LibraryComponent, LibraryManifest, PaletteScheme } from './types/composition'
-import { buildComposition, collectSvgColorUsage, exportItems, findComponents, FORMATS, getFamilyCoverage, inferMetadata, makeSceneObject, normalizeHexColor, recolorSvg, reflowComposition, STARTER_PALETTES, switchSceneVariants, trimSvgToContent } from './features/composer/composer'
+import { buildComposition, collectSvgColorUsage, exportItems, findComponents, FORMATS, getFamilyCoverage, inferMetadata, makeSceneObject, normalizeHexColor, recolorSvg, reflowComposition, STARTER_PALETTES, switchSceneVariants, trimSvgToContent, type CompositionLayout } from './features/composer/composer'
 import { serializeComposition } from './features/export/SvgExporter'
 import { cleanSvg } from './features/svg-import/SvgSanitizer'
 import { readWorkspaceValue, writeWorkspaceValue } from './features/storage/workspaceStorage'
@@ -15,7 +15,8 @@ type StoredPreferences = { paletteId?: string; formatId?: string; size?: DetailS
 type LibraryRoleFilter = 'all' | 'main' | 'background'
 type StudioPage = 'landing' | 'gallery' | 'templates' | 'editor'
 const STUDIO_PAGES = new Set<StudioPage>(['landing', 'gallery', 'templates', 'editor'])
-type BackdropId = 'solid' | 'desk' | 'paper' | 'buildplate'
+type BackdropId = 'solid' | 'desk' | 'paper' | 'buildplate' | 'palette'
+type PaletteBackgroundId = 'lavender' | 'peach' | 'mint'
 type ProjectSnapshot = {
   id: string
   name: string
@@ -23,6 +24,7 @@ type ProjectSnapshot = {
   formatId: string
   size: DetailSize
   paletteId: string
+  paletteBackgroundId?: PaletteBackgroundId
   backgroundColor: string
   transparent: boolean
   includeBackground: boolean
@@ -59,6 +61,7 @@ const BACKDROPS: Array<{ id: BackdropId; label: string; description: string }> =
   { id: 'desk', label: 'Стол', description: 'Тёплая древесина' },
   { id: 'paper', label: 'Бумага', description: 'Лист с разметкой' },
   { id: 'buildplate', label: 'Шипы', description: 'Плита со шипами' },
+  { id: 'palette', label: 'Фон палитры', description: 'Декоративный SVG-фон' },
 ]
 
 const uid = () => crypto.randomUUID()
@@ -70,7 +73,9 @@ const formatForProject = (project?: Pick<ProjectSnapshot, 'formatId' | 'canvasWi
   }
   return FORMATS.find((entry) => entry.id === project?.formatId) ?? FORMATS[0]
 }
-const DEFAULT_PROJECT_FORMAT: CompositionFormat = { id: 'custom', name: 'Свой размер', width: 1080, height: 1920, description: 'Настраиваемый размер холста' }
+const DEFAULT_PROJECT_FORMAT: CompositionFormat = FORMATS[0]
+const isPaletteBackgroundId = (value: unknown): value is PaletteBackgroundId => value === 'lavender' || value === 'peach' || value === 'mint'
+const paletteBackgroundForScheme = (paletteId?: string): PaletteBackgroundId => paletteId === 'palette-02' || paletteId === 'peach' ? 'peach' : paletteId === 'palette-03' || paletteId === 'aqua' || paletteId === 'mint' ? 'mint' : 'lavender'
 const safeStorage = <T,>(key: string, fallback: T): T => {
   try { return JSON.parse(localStorage.getItem(key) ?? 'null') as T ?? fallback } catch { return fallback }
 }
@@ -268,7 +273,7 @@ export default function ComposerStudio() {
   const projectsFrameRef = useRef<HTMLIFrameElement>(null)
   const templateFrameRef = useRef<HTMLIFrameElement>(null)
   const editorFrameRef = useRef<HTMLIFrameElement>(null)
-  const landingActionsRef = useRef<{ openEditor: () => void; createProject: () => void; openProjects: () => void; openTemplate: (templateId: string) => void; composeEditorRequest: (request: { query: string; mode: CompositionMode }) => void; syncProjects: () => void; openProject: (projectId: string) => void; duplicateProject: (projectId: string) => void; requestDeleteProject: (projectId: string) => void; renameProject: (projectId: string) => void; sendEditorProjectData: () => void; applyEditorChange: (projectId: string, state: unknown) => void; importEditorAssets: (assets: unknown[]) => void; importEditorPalette: (palette: unknown) => void }>({ openEditor: () => {}, createProject: () => {}, openProjects: () => {}, openTemplate: () => {}, composeEditorRequest: () => {}, syncProjects: () => {}, openProject: () => {}, duplicateProject: () => {}, requestDeleteProject: () => {}, renameProject: () => {}, sendEditorProjectData: () => {}, applyEditorChange: () => {}, importEditorAssets: () => {}, importEditorPalette: () => {} })
+  const landingActionsRef = useRef<{ openEditor: () => void; createProject: () => void; openProjects: () => void; openTemplate: (templateId: string) => void; composeEditorRequest: (request: { query: string; mode: CompositionMode; layout: CompositionLayout }) => void; syncProjects: () => void; openProject: (projectId: string) => void; duplicateProject: (projectId: string) => void; requestDeleteProject: (projectId: string) => void; renameProject: (projectId: string) => void; sendEditorProjectData: () => void; applyEditorChange: (projectId: string, state: unknown) => void; importEditorAssets: (assets: unknown[]) => void; importEditorPalette: (palette: unknown) => void }>({ openEditor: () => {}, createProject: () => {}, openProjects: () => {}, openTemplate: () => {}, composeEditorRequest: () => {}, syncProjects: () => {}, openProject: () => {}, duplicateProject: () => {}, requestDeleteProject: () => {}, renameProject: () => {}, sendEditorProjectData: () => {}, applyEditorChange: () => {}, importEditorAssets: () => {}, importEditorPalette: () => {} })
 
   useEffect(() => {
     const handleLandingMessage = (event: MessageEvent) => {
@@ -290,7 +295,7 @@ export default function ComposerStudio() {
       if (event.data.type === 'pixo:open-landing') setPage('landing')
       if (event.data.type === 'pixo:open-template' && typeof event.data.templateId === 'string') landingActionsRef.current.openTemplate(event.data.templateId)
       if (event.source === editorFrameRef.current?.contentWindow && event.data.type === 'pixo:editor-ready') landingActionsRef.current.sendEditorProjectData()
-      if (event.source === editorFrameRef.current?.contentWindow && event.data.type === 'pixo:compose-request' && typeof event.data.query === 'string') landingActionsRef.current.composeEditorRequest({ query: event.data.query, mode: event.data.mode === 'components' ? 'components' : 'metaphor' })
+      if (event.source === editorFrameRef.current?.contentWindow && event.data.type === 'pixo:compose-request' && typeof event.data.query === 'string') landingActionsRef.current.composeEditorRequest({ query: event.data.query, mode: event.data.mode === 'components' ? 'components' : 'metaphor', layout: event.data.layout === 'grid' || event.data.layout === 'diagonal' || event.data.layout === 'focus' ? event.data.layout : 'balanced' })
       if (event.source === editorFrameRef.current?.contentWindow && event.data.type === 'pixo:editor-change' && typeof event.data.projectId === 'string') landingActionsRef.current.applyEditorChange(event.data.projectId, event.data.state)
       if (event.source === editorFrameRef.current?.contentWindow && event.data.type === 'pixo:editor-import-assets' && Array.isArray(event.data.assets)) landingActionsRef.current.importEditorAssets(event.data.assets)
       if (event.source === editorFrameRef.current?.contentWindow && event.data.type === 'pixo:editor-add-palette') landingActionsRef.current.importEditorPalette(event.data.palette)
@@ -383,6 +388,7 @@ export default function ComposerStudio() {
             const normalizedProject = {
               ...project,
               backdropId: BACKDROPS.some((entry) => entry.id === project.backdropId) ? project.backdropId : 'solid' as BackdropId,
+              paletteBackgroundId: isPaletteBackgroundId(project.paletteBackgroundId) ? project.paletteBackgroundId : paletteBackgroundForScheme(project.paletteId),
               items: project.items.length || project.id !== savedProjectId ? project.items : initialScene,
             }
             const isCurrentReferenceProject = project.id === savedProjectId
@@ -459,7 +465,7 @@ export default function ComposerStudio() {
         setFormat(projectFormat)
         setSize(hydratedProject?.size === 'S' ? 'S' : preferredSize)
         setLibrarySizeFilter(hydratedProject?.size === 'S' ? 'S' : preferredSize)
-        setBackgroundColor(hydratedProject?.recoverySource === 'legacy-project-html' || projectPalette.backgroundColors.includes(hydratedProject?.backgroundColor ?? '') ? hydratedProject!.backgroundColor : projectPalette.backgroundColors[0])
+        setBackgroundColor(hydratedProject && (hydratedProject.backdropId === 'palette' || hydratedProject.recoverySource === 'legacy-project-html' || projectPalette.backgroundColors.includes(hydratedProject.backgroundColor)) ? hydratedProject.backgroundColor : projectPalette.backgroundColors[0])
         setTransparent(hydratedProject?.transparent ?? Boolean(preferences.transparent))
         setIncludeBackground(hydratedProject?.includeBackground ?? (preferences.includeBackground !== false))
         setBackdropId(hydratedProject?.backdropId ?? 'solid')
@@ -503,7 +509,7 @@ export default function ComposerStudio() {
     const timer = window.setTimeout(() => {
       setSaved(false)
       const currentProject = projectsRef.current.find((project) => project.id === currentProjectId)
-      const snapshot: ProjectSnapshot = { id: currentProjectId, name: currentProject?.name ?? 'Новый проект', items, formatId: format.id, canvasWidth: format.id === 'custom' ? format.width : undefined, canvasHeight: format.id === 'custom' ? format.height : undefined, preserveOriginalColors: currentProject?.preserveOriginalColors, size, paletteId: palette.id, backgroundColor, transparent, includeBackground, backdropId, updatedAt: Date.now(), recoverySource: currentProject?.recoverySource, recoveryKey: currentProject?.recoveryKey }
+      const snapshot: ProjectSnapshot = { id: currentProjectId, name: currentProject?.name ?? 'Новый проект', items, formatId: format.id, canvasWidth: format.id === 'custom' ? format.width : undefined, canvasHeight: format.id === 'custom' ? format.height : undefined, preserveOriginalColors: currentProject?.preserveOriginalColors, size, paletteId: palette.id, paletteBackgroundId: currentProject?.paletteBackgroundId ?? paletteBackgroundForScheme(palette.id), backgroundColor, transparent, includeBackground, backdropId, updatedAt: Date.now(), recoverySource: currentProject?.recoverySource, recoveryKey: currentProject?.recoveryKey }
       const nextProjects = projectsRef.current.some((project) => project.id === currentProjectId)
         ? projectsRef.current.map((project) => project.id === currentProjectId ? snapshot : project)
         : [snapshot, ...projectsRef.current]
@@ -621,7 +627,7 @@ export default function ComposerStudio() {
       setLibrarySizeFilter(project.size === 'S' ? 'S' : 'L')
       const projectPalette = palettes.find((entry) => entry.id === project.paletteId) ?? palettes[0]
       setPalette(projectPalette)
-      setBackgroundColor(project.recoverySource === 'legacy-project-html' || projectPalette.backgroundColors.includes(project.backgroundColor) ? project.backgroundColor : projectPalette.backgroundColors[0])
+      setBackgroundColor(project.backdropId === 'palette' || project.recoverySource === 'legacy-project-html' || projectPalette.backgroundColors.includes(project.backgroundColor) ? project.backgroundColor : projectPalette.backgroundColors[0])
       setTransparent(project.transparent)
       setIncludeBackground(project.includeBackground)
       setBackdropId(project.backdropId)
@@ -639,7 +645,7 @@ export default function ComposerStudio() {
 
   function createProject() {
     const project: ProjectSnapshot = {
-      id: uid(), name: 'Новый проект', items: [], formatId: DEFAULT_PROJECT_FORMAT.id, canvasWidth: DEFAULT_PROJECT_FORMAT.width, canvasHeight: DEFAULT_PROJECT_FORMAT.height, size, paletteId: palette.id,
+      id: uid(), name: 'Новый проект', items: [], formatId: DEFAULT_PROJECT_FORMAT.id, canvasWidth: DEFAULT_PROJECT_FORMAT.width, canvasHeight: DEFAULT_PROJECT_FORMAT.height, size, paletteId: palette.id, paletteBackgroundId: 'lavender',
       backgroundColor, transparent, includeBackground, backdropId, updatedAt: Date.now(),
     }
     void saveAndOpenProject(project)
@@ -659,7 +665,7 @@ export default function ComposerStudio() {
     setLibrarySizeFilter(project.size === 'S' ? 'S' : 'L')
     setPalette(palettes.find((entry) => entry.id === project.paletteId) ?? palettes[0])
     const selectedPalette = palettes.find((entry) => entry.id === project.paletteId) ?? palettes[0]
-    setBackgroundColor(project.recoverySource === 'legacy-project-html' || selectedPalette.backgroundColors.includes(project.backgroundColor) ? project.backgroundColor : selectedPalette.backgroundColors[0])
+    setBackgroundColor(project.backdropId === 'palette' || project.recoverySource === 'legacy-project-html' || selectedPalette.backgroundColors.includes(project.backgroundColor) ? project.backgroundColor : selectedPalette.backgroundColors[0])
     setTransparent(project.transparent)
     setIncludeBackground(project.includeBackground)
     setBackdropId(project.backdropId ?? 'solid')
@@ -671,7 +677,7 @@ export default function ComposerStudio() {
   function openTemplate(template: (typeof templates)[number]) {
     if (!template.items.length) { showNotice('Не нашёл SVG-объекты для этого шаблона. Проверьте библиотеку.'); return }
     const project: ProjectSnapshot = {
-      id: uid(), name: template.name, items: template.items.map((item) => ({ ...item, objectId: uid() })), formatId: format.id, canvasWidth: format.id === 'custom' ? format.width : undefined, canvasHeight: format.id === 'custom' ? format.height : undefined, size, paletteId: palette.id,
+      id: uid(), name: template.name, items: template.items.map((item) => ({ ...item, objectId: uid() })), formatId: format.id, canvasWidth: format.id === 'custom' ? format.width : undefined, canvasHeight: format.id === 'custom' ? format.height : undefined, size, paletteId: palette.id, paletteBackgroundId: 'lavender',
       backgroundColor, transparent: false, includeBackground: true, backdropId: template.backdropId, updatedAt: Date.now(),
     }
     void saveAndOpenProject(project, true)
@@ -762,6 +768,7 @@ export default function ComposerStudio() {
   function sendEditorProjectData() {
     const frame = editorFrameRef.current?.contentWindow
     if (!frame || !currentProjectId || !ready) return
+    const project = projectsRef.current.find((entry) => entry.id === currentProjectId)
     frame.postMessage({
       type: 'pixo:load-project',
       project: {
@@ -774,6 +781,7 @@ export default function ComposerStudio() {
         formatId: format.id,
         size,
         paletteId: palette.id,
+        paletteBackgroundId: project?.paletteBackgroundId ?? paletteBackgroundForScheme(project?.paletteId ?? palette.id),
         backgroundColor,
         transparent,
         includeBackground,
@@ -806,10 +814,11 @@ export default function ComposerStudio() {
       preserveOriginalColors: typeof state.preserveOriginalColors === 'boolean' ? state.preserveOriginalColors : currentProject?.preserveOriginalColors,
       size: state.size === 'S' || state.size === 'L' ? state.size : currentProject?.size ?? size,
       paletteId: selectedPalette?.id ?? currentProject?.paletteId ?? palette.id,
+      paletteBackgroundId: isPaletteBackgroundId(state.paletteBackgroundId) ? state.paletteBackgroundId : currentProject?.paletteBackgroundId ?? paletteBackgroundForScheme(selectedPalette?.id ?? currentProject?.paletteId ?? palette.id),
       backgroundColor: isHexColor(state.backgroundColor) ? state.backgroundColor : currentProject?.backgroundColor ?? backgroundColor,
       transparent: typeof state.transparent === 'boolean' ? state.transparent : currentProject?.transparent ?? transparent,
       includeBackground: typeof state.includeBackground === 'boolean' ? state.includeBackground : currentProject?.includeBackground ?? includeBackground,
-      backdropId: state.backdropId === 'solid' || state.backdropId === 'desk' || state.backdropId === 'paper' || state.backdropId === 'buildplate' ? state.backdropId : currentProject?.backdropId ?? backdropId,
+      backdropId: state.backdropId === 'solid' || state.backdropId === 'desk' || state.backdropId === 'paper' || state.backdropId === 'buildplate' || state.backdropId === 'palette' ? state.backdropId : currentProject?.backdropId ?? backdropId,
       updatedAt: Date.now(),
     }
     const nextProjects = projectsRef.current.some((project) => project.id === currentProjectId)
@@ -827,7 +836,7 @@ export default function ComposerStudio() {
     if (isHexColor(state.backgroundColor)) setBackgroundColor(state.backgroundColor)
     if (typeof state.transparent === 'boolean') setTransparent(state.transparent)
     if (typeof state.includeBackground === 'boolean') setIncludeBackground(state.includeBackground)
-    if (state.backdropId === 'solid' || state.backdropId === 'desk' || state.backdropId === 'paper' || state.backdropId === 'buildplate') setBackdropId(state.backdropId)
+    if (state.backdropId === 'solid' || state.backdropId === 'desk' || state.backdropId === 'paper' || state.backdropId === 'buildplate' || state.backdropId === 'palette') setBackdropId(state.backdropId)
     setSaved(false)
     void Promise.all([
       writeWorkspaceValue('composer-projects', nextProjects),
@@ -905,7 +914,7 @@ export default function ComposerStudio() {
     const next = completePaletteMaps(parsed, sourcePalette)
     setPalettes((previous) => [...previous, next])
     setPalette(next)
-    setBackgroundColor(next.backgroundColors[0])
+    if (backdropId !== 'palette') setBackgroundColor(next.backgroundColors[0])
     editorFrameRef.current?.contentWindow?.postMessage({ type: 'pixo:editor-palette-added', palette: next }, window.location.origin)
     showNotice(`Палитра «${next.name}» добавлена и сохранена.`)
   }
@@ -1058,7 +1067,7 @@ export default function ComposerStudio() {
     if (asset) addAssetAt(asset, event.clientX, event.clientY)
   }
 
-  const generate = (request: { query: string; mode: CompositionMode } = { query, mode }, replyToEditor = false) => {
+  const generate = (request: { query: string; mode: CompositionMode; layout?: CompositionLayout } = { query, mode }, replyToEditor = false) => {
     const reportToEditor = (type: 'pixo:composition-error', message: string) => {
       if (replyToEditor) editorFrameRef.current?.contentWindow?.postMessage({ type, message }, window.location.origin)
     }
@@ -1071,10 +1080,10 @@ export default function ComposerStudio() {
       reportToEditor('pixo:composition-error', message)
       return
     }
-    const composition = buildComposition(format, filtered.slice(0, 8))
+    const composition = buildComposition(format, filtered.slice(0, 8), request.layout ?? 'balanced')
     setItems(composition)
     setSelectedId(null)
-    if (replyToEditor) editorFrameRef.current?.contentWindow?.postMessage({ type: 'pixo:editor-composition', items: composition }, window.location.origin)
+    if (replyToEditor) editorFrameRef.current?.contentWindow?.postMessage({ type: 'pixo:editor-composition', items: composition, layout: request.layout ?? 'balanced' }, window.location.origin)
     const message = `Собрано из ${composition.length} исходных SVG-компонентов · ${size}`
     showNotice(message)
   }
@@ -1087,7 +1096,7 @@ export default function ComposerStudio() {
 
   const choosePalette = (next: PaletteScheme) => {
     setPalette(next)
-    if (!next.backgroundColors.includes(backgroundColor)) setBackgroundColor(next.backgroundColors[0])
+    if (backdropId !== 'palette' && !next.backgroundColors.includes(backgroundColor)) setBackgroundColor(next.backgroundColors[0])
   }
 
   const updatePaletteMapping = (kind: 'objectColorMap' | 'backgroundColorMap', source: string, target: string) => {
@@ -1249,6 +1258,10 @@ export default function ComposerStudio() {
           format: formatForProject(project),
           backgroundColor: project.backgroundColor,
           transparent: project.transparent,
+          backdropId: project.backdropId,
+          paletteId: project.paletteId,
+          paletteBackgroundId: project.paletteBackgroundId ?? paletteBackgroundForScheme(project.paletteId),
+          backgroundColors: projectPalette?.backgroundColors ?? [],
           items: project.items.map((item) => ({ ...item, markup: item.sourceFileId?.startsWith('recovered-project-html:') ? item.markup : projectPalette ? recolorSvg(item.markup, item.role, projectPalette) : item.markup })),
         }
       }),
@@ -1277,7 +1290,7 @@ export default function ComposerStudio() {
 
   return (
     <main className={page === 'editor' ? 'studio editor-theme' : 'studio'}>
-      {page === 'landing' ? <iframe ref={landingFrameRef} className="pixo-landing-frame" title="Pixo — главная страница" src={`${import.meta.env.BASE_URL}pixo-landing.html`} /> : page === 'gallery' ? (!ready ? <div className="gallery-loading"><AppIcon /><span>Загружаю проекты и SVG-библиотеку…</span></div> : loadError ? <div className="gallery-error"><div className="gallery-error-mark"><FolderOpen size={23} /></div><h2>Не удалось загрузить проекты</h2><p>Локальное хранилище временно недоступно. Повторите загрузку.</p><button className="gallery-create-button" onClick={retryProjectLoad}><RotateCw size={15} /> Повторить</button></div> : <iframe ref={projectsFrameRef} className="pixo-landing-frame" title="Pixo — Мои проекты" src={`${import.meta.env.BASE_URL}pixo-projects.html`} onLoad={() => landingActionsRef.current.syncProjects()} />): page === 'templates' ? <iframe ref={templateFrameRef} className="pixo-landing-frame" title="Шаблоны из библиотеки" src={`${import.meta.env.BASE_URL}template-library.html`} /> : <><iframe ref={editorFrameRef} className="pixo-landing-frame" title="Pixo — редактор" src={`${import.meta.env.BASE_URL}pixo-editor.html?v=11`} onLoad={sendEditorProjectData} />{false && <><header className="studio-header">
+      {page === 'landing' ? <iframe ref={landingFrameRef} className="pixo-landing-frame" title="Pixo — главная страница" src={`${import.meta.env.BASE_URL}pixo-landing.html?v=3`} /> : page === 'gallery' ? (!ready ? <div className="gallery-loading"><AppIcon /><span>Загружаю проекты и SVG-библиотеку…</span></div> : loadError ? <div className="gallery-error"><div className="gallery-error-mark"><FolderOpen size={23} /></div><h2>Не удалось загрузить проекты</h2><p>Локальное хранилище временно недоступно. Повторите загрузку.</p><button className="gallery-create-button" onClick={retryProjectLoad}><RotateCw size={15} /> Повторить</button></div> : <iframe ref={projectsFrameRef} className="pixo-landing-frame" title="Pixo — Мои проекты" src={`${import.meta.env.BASE_URL}pixo-projects.html?v=6`} onLoad={() => landingActionsRef.current.syncProjects()} />): page === 'templates' ? <iframe ref={templateFrameRef} className="pixo-landing-frame" title="Шаблоны из библиотеки" src={`${import.meta.env.BASE_URL}template-library.html`} /> : <><iframe ref={editorFrameRef} className="pixo-landing-frame" title="Pixo — редактор" src={`${import.meta.env.BASE_URL}pixo-editor.html?v=24`} onLoad={sendEditorProjectData} />{false && <><header className="studio-header">
         <div className="studio-brand"><button className="studio-brand-home" type="button" onClick={returnToLanding} aria-label="Pixo — главная страница" title="На главную"><AppIcon /><strong>Pixo</strong></button><span className="brand-divider" /><button className="project-title" onClick={returnToProjects} title="Открыть мои проекты"><small>МОИ ПРОЕКТЫ</small><span>{projects.find((project) => project.id === currentProjectId)?.name ?? 'Проект'} <ChevronDown size={13} /></span></button></div>
         <div className="studio-header-actions">
           <span className="studio-project"><i className="save-dot" data-saved={saved} />{saved ? 'Сохранено' : 'Сохраняем…'}</span>

@@ -51,7 +51,7 @@ export function measureCompositionBounds(objects: CanvasObject[]) {
   return { x: left, y: top, width: right - left, height: bottom - top }
 }
 
-export function serializeComposition(objects: CanvasObject[], transparentBackground: boolean, backgroundColor = '#101114', width = 1440, height = 900, viewBoxX = 0, viewBoxY = 0, backdropId: 'solid' | 'desk' | 'paper' | 'buildplate' = 'solid', surfaceColors: string[] = [backgroundColor]) {
+export function serializeComposition(objects: CanvasObject[], transparentBackground: boolean, backgroundColor = '#101114', width = 1440, height = 900, viewBoxX = 0, viewBoxY = 0, backdropId: 'solid' | 'desk' | 'paper' | 'buildplate' | 'palette' = 'solid', surfaceColors: string[] = [backgroundColor]) {
   const document = window.document.implementation.createDocument('http://www.w3.org/2000/svg', 'svg', null)
   const root = document.documentElement
   root.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
@@ -102,10 +102,39 @@ export function serializeComposition(objects: CanvasObject[], transparentBackgro
       definitions.append(pattern)
       root.append(definitions)
       background.setAttribute('fill', 'url(#pixo-surface-pattern)')
+      root.append(background)
+    } else if (backdropId === 'palette') {
+      background.setAttribute('fill', backgroundColor)
+      root.append(background)
+      const paletteBackdropColors: Record<string, { detail: string; highlight: string }> = {
+        '#d7cdf5': { detail: '#7864D7', highlight: '#AA9BF0' },
+        '#fdd7b9': { detail: '#D27532', highlight: '#FAC896' },
+        '#beebeb': { detail: '#5ABEBE', highlight: '#80DADA' },
+      }
+      const selectedBackdrop = paletteBackdropColors[backgroundColor.toLowerCase()]
+      const detail = selectedBackdrop?.detail ?? surfaceColors[2] ?? surfaceColors[1] ?? backgroundColor
+      const highlight = selectedBackdrop?.highlight ?? surfaceColors[1] ?? backgroundColor
+      const group = makeElement('g', { transform: `translate(${viewBoxX} ${viewBoxY}) scale(${width / 1000} ${height / 1000})` })
+      const peach = backgroundColor.toLowerCase() === '#fdd7b9'
+      const mint = backgroundColor.toLowerCase() === '#beebeb'
+      if (peach) {
+        group.append(
+          makeElement('path', { d: 'M1000 730C945 820 1005 925 1000 1000H470L1000 730Z', fill: highlight }),
+          makeElement('path', { d: 'M258 -88L1000 330M384 1000L1000 625', fill: 'none', stroke: detail, 'stroke-width': '2' }),
+        )
+      } else {
+        group.append(
+          makeElement('ellipse', { cx: '116', cy: '213', rx: '29', ry: '16', fill: highlight }),
+          makeElement('ellipse', { cx: '105', cy: '931', rx: '33', ry: '18', fill: highlight }),
+          makeElement('path', { d: 'M140 264L368 130M52 362L230 257M720 869L898 764M365 161L435 119M566 890L636 848', fill: 'none', stroke: detail, 'stroke-width': '2' }),
+        )
+        if (mint) group.append(makeElement('ellipse', { cx: '116', cy: '213', rx: '12', ry: '7', fill: '#fff' }), makeElement('ellipse', { cx: '105', cy: '931', rx: '16', ry: '8', fill: '#fff' }))
+      }
+      root.append(group)
     } else {
       background.setAttribute('fill', backgroundColor)
+      root.append(background)
     }
-    root.append(background)
   }
   for (const item of objects.filter((object) => object.visible)) {
     const group = document.createElementNS(root.namespaceURI, 'g')

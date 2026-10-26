@@ -8,9 +8,9 @@ export const FORMATS: CompositionFormat[] = [
 ]
 
 export const STARTER_PALETTES: PaletteScheme[] = [
-  { id: 'lavender', name: 'Лаванда', objectColors: ['#F2D477', '#E884A8', '#6B4EE8', '#32303A'], backgroundColors: ['#DCCFF5', '#BBA6EA', '#9479D7'] },
-  { id: 'peach', name: 'Персик', objectColors: ['#E9C85D', '#E98C68', '#5145B7', '#35333A'], backgroundColors: ['#F6D9C8', '#EFB99E', '#DC9273'] },
-  { id: 'aqua', name: 'Аква', objectColors: ['#EAC95E', '#E07E9B', '#188D91', '#30363B'], backgroundColors: ['#C6EAE6', '#8BD2CB', '#55B9B2'] },
+  { id: 'lavender', name: 'Лаванда', objectColors: ['#F2D477', '#E884A8', '#6B4EE8', '#32303A'], backgroundColors: ['#D7CDF5', '#AA9BF0', '#7864D7'] },
+  { id: 'peach', name: 'Персик', objectColors: ['#E9C85D', '#E98C68', '#5145B7', '#35333A'], backgroundColors: ['#FDD7B9', '#FAC896', '#D27532'] },
+  { id: 'aqua', name: 'Аква', objectColors: ['#EAC95E', '#E07E9B', '#188D91', '#30363B'], backgroundColors: ['#BEEBEB', '#80DADA', '#5ABEBE'] },
 ]
 
 const SYNONYMS: Record<string, string[]> = {
@@ -172,6 +172,8 @@ export function findComponents(assets: LibraryComponent[], query: string, size: 
 }
 
 type LayoutPoint = { x: number; y: number; size: number }
+type LayoutAnchor = [number, number, number]
+export type CompositionLayout = 'balanced' | 'grid' | 'diagonal' | 'focus'
 
 function layoutPoints(format: CompositionFormat, role: LibraryComponent['role'], count: number): LayoutPoint[] {
   const aspect = format.width / format.height
@@ -197,9 +199,60 @@ function layoutPoints(format: CompositionFormat, role: LibraryComponent['role'],
   })
 }
 
-function positionAssets(format: CompositionFormat, assets: LibraryComponent[], role: LibraryComponent['role'], placementRole = role) {
+function variantPoints(format: CompositionFormat, variant: CompositionLayout, role: LibraryComponent['role'], count: number): LayoutPoint[] {
+  if (variant === 'balanced') return layoutPoints(format, role, count)
+  const aspect = format.width / format.height
+  const portrait = aspect < 0.9
+  const square = aspect >= 0.9 && aspect <= 1.1
+  const layouts: Record<Exclude<CompositionLayout, 'balanced'>, { main: LayoutAnchor[][]; background: LayoutAnchor[][] }> = {
+    grid: {
+      main: [
+        [[.2,.28,.2],[.5,.28,.2],[.8,.28,.2],[.2,.68,.2],[.5,.68,.2],[.8,.68,.2],[.35,.87,.16],[.65,.87,.16]],
+        [[.28,.22,.2],[.72,.22,.2],[.28,.5,.2],[.72,.5,.2],[.28,.78,.2],[.72,.78,.2],[.5,.36,.16],[.5,.64,.16]],
+        [[.28,.2,.2],[.72,.2,.2],[.28,.5,.2],[.72,.5,.2],[.28,.8,.2],[.72,.8,.2],[.5,.35,.16],[.5,.65,.16]],
+      ],
+      background: [
+        [[.12,.12,.1],[.88,.12,.1],[.12,.88,.1],[.88,.88,.1],[.5,.12,.1],[.5,.88,.1],[.08,.5,.1],[.92,.5,.1]],
+        [[.12,.12,.1],[.88,.12,.1],[.12,.88,.1],[.88,.88,.1],[.5,.12,.1],[.5,.88,.1],[.12,.5,.1],[.88,.5,.1]],
+        [[.12,.12,.1],[.88,.12,.1],[.12,.88,.1],[.88,.88,.1],[.5,.12,.1],[.5,.88,.1],[.12,.5,.1],[.88,.5,.1]],
+      ],
+    },
+    diagonal: {
+      main: [
+        [[.16,.73,.19],[.39,.56,.25],[.62,.39,.25],[.84,.23,.19],[.26,.31,.16],[.72,.72,.16],[.48,.84,.15],[.9,.5,.13]],
+        [[.24,.78,.17],[.38,.59,.23],[.62,.42,.23],[.76,.23,.17],[.2,.48,.15],[.8,.55,.15],[.5,.88,.15],[.5,.16,.14]],
+        [[.22,.78,.17],[.4,.58,.23],[.6,.4,.23],[.78,.22,.17],[.18,.48,.15],[.82,.55,.15],[.5,.88,.15],[.5,.14,.14]],
+      ],
+      background: [
+        [[.12,.16,.1],[.88,.84,.1],[.84,.12,.1],[.16,.88,.1],[.5,.14,.09],[.5,.86,.09],[.12,.5,.09],[.88,.5,.09]],
+        [[.13,.14,.09],[.87,.86,.09],[.87,.14,.09],[.13,.86,.09],[.5,.12,.09],[.5,.88,.09],[.1,.5,.09],[.9,.5,.09]],
+        [[.13,.14,.09],[.87,.86,.09],[.87,.14,.09],[.13,.86,.09],[.5,.12,.09],[.5,.88,.09],[.1,.5,.09],[.9,.5,.09]],
+      ],
+    },
+    focus: {
+      main: [
+        [[.5,.5,.38],[.22,.26,.17],[.78,.25,.17],[.24,.76,.17],[.76,.75,.17],[.5,.17,.14],[.5,.84,.14],[.9,.5,.13]],
+        [[.5,.38,.36],[.27,.67,.2],[.73,.67,.2],[.5,.84,.16],[.18,.45,.14],[.82,.45,.14],[.3,.18,.13],[.7,.18,.13]],
+        [[.5,.4,.36],[.27,.68,.2],[.73,.68,.2],[.5,.85,.16],[.18,.47,.14],[.82,.47,.14],[.3,.17,.13],[.7,.17,.13]],
+      ],
+      background: [
+        [[.12,.13,.1],[.88,.13,.1],[.12,.87,.1],[.88,.87,.1],[.5,.12,.09],[.5,.88,.09],[.1,.5,.09],[.9,.5,.09]],
+        [[.14,.13,.09],[.86,.13,.09],[.14,.87,.09],[.86,.87,.09],[.5,.12,.09],[.5,.89,.09],[.1,.5,.09],[.9,.5,.09]],
+        [[.14,.13,.09],[.86,.13,.09],[.14,.87,.09],[.86,.87,.09],[.5,.12,.09],[.5,.89,.09],[.1,.5,.09],[.9,.5,.09]],
+      ],
+    },
+  }
+  const orientation = portrait ? 2 : square ? 1 : 0
+  const anchors = layouts[variant][role][orientation]
+  return Array.from({ length: count }, (_, index) => {
+    const [x, y, size] = anchors[index % anchors.length]
+    return { x, y, size }
+  })
+}
+
+function positionAssets(format: CompositionFormat, assets: LibraryComponent[], role: LibraryComponent['role'], placementRole = role, variant: CompositionLayout = 'balanced') {
   const unit = Math.min(format.width, format.height)
-  const points = layoutPoints(format, placementRole, assets.length)
+  const points = variantPoints(format, variant, placementRole, assets.length)
   return assets.map((asset, index) => {
     const point = points[index]
     const ratio = asset.width / Math.max(1, asset.height)
@@ -227,17 +280,17 @@ function positionAssets(format: CompositionFormat, assets: LibraryComponent[], r
   })
 }
 
-function layoutFor(format: CompositionFormat, selected: LibraryComponent[]) {
+function layoutFor(format: CompositionFormat, selected: LibraryComponent[], variant: CompositionLayout = 'balanced') {
   const main = selected.filter((asset) => asset.role === 'main')
   const background = selected.filter((asset) => asset.role === 'background')
   return [
-    ...positionAssets(format, background, 'background', main.length ? 'background' : 'main'),
-    ...positionAssets(format, main, 'main'),
+    ...positionAssets(format, background, 'background', main.length ? 'background' : 'main', variant),
+    ...positionAssets(format, main, 'main', 'main', variant),
   ]
 }
 
-export function buildComposition(format: CompositionFormat, selected: LibraryComponent[]) {
-  return layoutFor(format, selected)
+export function buildComposition(format: CompositionFormat, selected: LibraryComponent[], variant: CompositionLayout = 'balanced') {
+  return layoutFor(format, selected, variant)
 }
 
 export function reflowComposition(format: CompositionFormat, items: CompositionItem[]) {

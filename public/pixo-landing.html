@@ -22,6 +22,7 @@ section{scroll-margin-top:90px}
 .nav{position:sticky;top:calc(env(safe-area-inset-top,0px) + 10px);z-index:50;margin-top:10px;display:flex;align-items:center;gap:20px;padding:8px 8px 8px 18px;border-radius:99px;background:color-mix(in srgb,var(--card) 84%,transparent);backdrop-filter:blur(14px);border:1px solid var(--ln)}
 .logo{display:flex;align-items:center;gap:8px;font:700 20px Unbounded,Manrope,sans-serif;letter-spacing:-.04em;margin-right:auto}
 .nav a{color:var(--ink);text-decoration:none;font-weight:700;font-size:14px;padding:6px 4px;position:relative}
+.nav a.logo{font-size:20px;padding:0;transform:translateY(-1px)}
 .nav .lk::after{content:"";position:absolute;left:4px;right:4px;bottom:0;height:2px;background:var(--v);transform:scaleX(0);transition:transform .35s}
 .nav .lk:hover::after{transform:scaleX(1)}
 .btn{display:inline-flex;align-items:center;gap:10px;border:0;cursor:pointer;font:700 15px Manrope,sans-serif;padding:14px 22px;border-radius:99px;background:var(--v);color:#fff;box-shadow:0 12px 28px -12px var(--v);transition:box-shadow .3s,translate .3s}
