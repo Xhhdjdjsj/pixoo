@@ -57,6 +57,7 @@ sup{color:var(--ac2);font-size:10px;margin-left:3px}
 .library-drag-ghost{position:fixed;z-index:100;left:0;top:0;width:68px;height:68px;padding:5px;border:1px solid var(--ac);border-radius:14px;background:var(--cd);box-shadow:0 12px 32px #09051d66;opacity:.88;pointer-events:none;transform:translate(-50%,-50%)}
 .library-drag-ghost .add{display:none!important}
 body.library-dragging,body.library-dragging *{-webkit-user-select:none!important;user-select:none!important;cursor:grabbing!important}
+body.library-pointer-active,body.library-pointer-active *{-webkit-user-select:none!important;user-select:none!important}
 .th{position:relative;aspect-ratio:1;border-radius:12px;background:linear-gradient(160deg,#3b2c7a,#2a1d5c);padding:10px}
 .th svg{width:100%;height:100%}
 .add{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:8px;background:var(--ac);color:#fff;font-weight:700;line-height:1}
@@ -185,7 +186,7 @@ dialog#ex textarea{width:100%;height:180px;max-height:32vh;background:#14102f;co
  #exp{grid-area:export;min-width:0;white-space:nowrap;padding-inline:6px}
  .top>.btn{min-height:36px;padding:6px 8px;font-size:10px}
  .app{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);align-content:stretch;flex:1 1 auto;width:100%;height:auto;min-height:0;padding:8px 8px calc(68px + env(safe-area-inset-bottom,0px));gap:0}
- .app{touch-action:pan-y}
+ .app{touch-action:pan-y;overscroll-behavior:none}
  .app>.pn,.app>.mid{display:none;width:100%;height:100%;max-height:none;min-width:0;min-height:0;margin:0;border-radius:16px;overflow:hidden}
  body[data-mobile-panel="canvas"] .app>.mid{display:flex;order:0}
  body[data-mobile-panel="components"] .app>.pn:first-child{display:flex;order:0}
@@ -201,7 +202,7 @@ dialog#ex textarea{width:100%;height:180px;max-height:32vh;background:#14102f;co
  .cap{flex:none}.bar{flex:none;padding-bottom:2px}
  .mobile-panel-nav{position:fixed;z-index:35;right:8px;bottom:calc(7px + env(safe-area-inset-bottom,0px));left:8px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:5px;border:1px solid var(--ln);border-radius:17px;background:color-mix(in srgb,var(--pn) 94%,transparent);box-shadow:0 8px 26px #08051655;backdrop-filter:blur(14px)}
  .mobile-panel-button{display:flex;min-width:0;min-height:48px;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px;border-radius:12px;color:var(--mt);font-size:9px;font-weight:600;line-height:1.15;white-space:nowrap}
- .stage{touch-action:none}
+ .stage{touch-action:none;overflow:hidden;overscroll-behavior:none}
  .mobile-panel-button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
  .mobile-panel-button.on{background:var(--ac);color:#fff;box-shadow:0 4px 12px #7c5cff44}
  .mobile-panel-button:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
@@ -510,13 +511,13 @@ function finishTouchPointer(e){if(e.pointerType!=='touch')return;touchPointers.d
 document.addEventListener('pointerup',finishTouchPointer);document.addEventListener('pointercancel',finishTouchPointer);
 const finishCanvasDrag=()=>{drag=null};sv.addEventListener('pointerup',finishCanvasDrag);sv.addEventListener('pointercancel',finishCanvasDrag);
 let libraryPointerDrag=null,mobileCardTap=null,lastMobileTapCard=null;const libraryGrid=$('#gr'),dropStage=$('#stage');
-libraryGrid.addEventListener('pointerdown',e=>{if(e.button!==0)return;const card=e.target.closest('.card');if(!card)return;if(e.pointerType==='touch'){mobileCardTap={pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,card,moved:false};try{libraryGrid.setPointerCapture(e.pointerId)}catch{}}libraryPointerDrag={pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,card,started:false,ghost:null,pointerType:e.pointerType}});
+libraryGrid.addEventListener('pointerdown',e=>{if(e.button!==0)return;const card=e.target.closest('.card');if(!card)return;document.body.classList.add('library-pointer-active');if(e.pointerType==='touch'){mobileCardTap={pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,card,moved:false};try{libraryGrid.setPointerCapture(e.pointerId)}catch{}}libraryPointerDrag={pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,card,started:false,ghost:null,pointerType:e.pointerType}});
 document.addEventListener('pointermove',e=>{const tap=mobileCardTap;if(tap&&tap.pointerId===e.pointerId&&Math.hypot(e.clientX-tap.startX,e.clientY-tap.startY)>8)tap.moved=true},{passive:true});
 function suppressLibraryClick(card){lastMobileTapCard=card;setTimeout(()=>{if(lastMobileTapCard===card)lastMobileTapCard=null},700)}
 document.addEventListener('pointermove',e=>{const state=libraryPointerDrag;if(!state||e.pointerId!==state.pointerId)return;const dx=e.clientX-state.startX,dy=e.clientY-state.startY;if(!state.started){if(Math.hypot(dx,dy)<8)return;if(state.pointerType==='touch'&&Math.abs(dy)>Math.abs(dx)*1.1){libraryPointerDrag=null;return}if(state.pointerType==='touch'&&Math.abs(dx)<Math.abs(dy)*1.1)return;state.started=true;document.body.classList.add('library-dragging');window.getSelection()?.removeAllRanges();const thumb=state.card.querySelector('.th')?.cloneNode(true);if(thumb){thumb.classList.add('library-drag-ghost');thumb.querySelectorAll('button').forEach(button=>button.remove());document.body.append(thumb);state.ghost=thumb}if(matchMedia('(max-width:760px)').matches)setMobilePanel('canvas')}if(state.ghost){state.ghost.style.left=e.clientX+'px';state.ghost.style.top=e.clientY+'px'}});
 function finishLibraryPointerDrag(e,cancelled=false){const state=libraryPointerDrag;if(!state||e.pointerId!==state.pointerId)return;libraryPointerDrag=null;state.ghost?.remove();document.body.classList.remove('library-dragging');if(!state.started)return;suppressLibraryClick(state.card);const rect=dropStage.getBoundingClientRect(),inside=!cancelled&&e.clientX>=rect.left&&e.clientX<=rect.right&&e.clientY>=rect.top&&e.clientY<=rect.bottom;if(!inside){if(matchMedia('(max-width:760px)').matches)setMobilePanel('components');return}const point=pt(e),assetId=state.card.dataset.assetId;if(assetId){const asset=appAssets.find(item=>item.id===assetId);if(asset)addAsset(asset,point)}else if(state.card.dataset.k)add(state.card.dataset.k,state.card.dataset.v||'m',point);if(matchMedia('(max-width:760px)').matches)setMobilePanel('canvas')}
 function finishMobileCardTap(e,cancelled=false){const tap=mobileCardTap;if(!tap||e.pointerId!==tap.pointerId)return;mobileCardTap=null;if(cancelled||tap.moved)return;const hit=document.elementFromPoint(e.clientX,e.clientY);if(!hit||!tap.card.contains(hit))return;suppressLibraryClick(tap.card);addLibraryCard(tap.card)}
-document.addEventListener('pointerup',e=>{finishMobileCardTap(e);finishLibraryPointerDrag(e)});document.addEventListener('pointercancel',e=>{finishMobileCardTap(e,true);finishLibraryPointerDrag(e,true)});
+document.addEventListener('pointerup',e=>{finishMobileCardTap(e);finishLibraryPointerDrag(e);document.body.classList.remove('library-pointer-active')});document.addEventListener('pointercancel',e=>{finishMobileCardTap(e,true);finishLibraryPointerDrag(e,true);document.body.classList.remove('library-pointer-active')});
 document.addEventListener('click',e=>{const t=e.target;let b;
  const clickedCard=t.closest('.card');if(lastMobileTapCard&&clickedCard===lastMobileTapCard){lastMobileTapCard=null;return}
  if(b=t.closest('[data-mobile-panel]')){setMobilePanel(b.dataset.mobilePanel);return}
