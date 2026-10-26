@@ -1,0 +1,94 @@
+/* PIXO FX — «Vector Night»: тёмный чертёж, лаймовый акцент, карточки как выделенные векторные объекты */
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@500;700;800&display=swap');
+
+html:root:root{--bg:#0a0615;--ink:#f4efff;--mut:#a99fcb;--v:#7b5cff;--lil:#2a1f55;--card:#140c29;--ln:rgba(244,239,255,.14);--acid:#c8ff3d;--on-acid:#12082b;--glow:rgba(123,92,255,.34);color-scheme:dark;background:var(--bg)}
+body{background:transparent!important;color:var(--ink)}
+.studio,.studio-projects,.studio-template-page{background:transparent!important;color:var(--ink)}
+
+/* чертёжная сетка + зерно */
+html::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:linear-gradient(rgba(244,239,255,.05) 1px,transparent 1px) 0 0/56px 56px,linear-gradient(90deg,rgba(244,239,255,.05) 1px,transparent 1px) 0 0/56px 56px;-webkit-mask:radial-gradient(ellipse 80% 70% at 50% 30%,#000,transparent);mask:radial-gradient(ellipse 80% 70% at 50% 30%,#000,transparent)}
+html::after{content:"";position:fixed;inset:0;z-index:99;pointer-events:none;opacity:.07;mix-blend-mode:overlay;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* кнопки: кислотный акцент */
+.btn:not(.g),.gallery-create-button{background:var(--acid)!important;color:var(--on-acid)!important;border-color:var(--acid)!important;box-shadow:0 12px 36px -12px rgba(200,255,61,.65)!important}
+.btn:not(.g):hover,.gallery-create-button:hover{box-shadow:0 18px 44px -10px rgba(200,255,61,.85)!important}
+.fin .btn:not(.g){background:#fff!important;color:var(--v)!important;box-shadow:none!important}
+.btn.busy{background:linear-gradient(100deg,var(--acid) 30%,#f6ffc9 50%,var(--acid) 70%) 0 0/250% 100%!important}
+.btn.g{background:rgba(20,12,41,.7);color:var(--ink);border-color:var(--ln)}
+a.logo,.logo a,.top a:not(.btn){color:var(--ink);text-decoration:none}
+
+/* ===== ФИКС 1: номера шагов (раньше гасли из-за opacity у всей карточки) ===== */
+.st{opacity:1!important;z-index:1}
+.steps::before,.steps::after{z-index:0}
+.st>h3,.st>p{opacity:1;transition:opacity .4s}
+.st.on>h3,.st.on>p{opacity:1}
+.st.on{border-color:var(--acid)}
+.st i{width:56px;height:56px;font:800 24px/1 Unbounded,Manrope,sans-serif!important;font-variant-numeric:lining-nums;color:#fff;line-height:1;background:linear-gradient(180deg,#7a5dff,#5d47d9);border:2px solid rgba(255,255,255,.25);opacity:1!important;box-shadow:0 0 0 6px rgba(122,93,255,.15);z-index:2}
+.st.on i{background:linear-gradient(180deg,#c8ff3d,#b7e52c);border-color:rgba(200,255,61,.8);color:var(--on-acid);rotate:-6deg;box-shadow:0 0 0 6px rgba(200,255,61,.14),0 14px 32px -10px rgba(200,255,61,.7)}
+.steps::after{background:linear-gradient(var(--acid),var(--v))}
+
+/* ===== ФИКС 2: плашка запроса в редакторе ===== */
+.stage{container:stg/inline-size}
+.prm{grid-template-columns:minmax(0,1fr) auto;gap:10px 12px;padding:14px;border-radius:24px;background:linear-gradient(145deg,rgba(123,92,255,.16),rgba(20,12,41,.8));border-color:rgba(200,255,61,.28)}
+.pin{flex-wrap:nowrap;overflow:hidden;min-width:0;padding:5px 8px 5px 5px}
+.pin .seg{flex:0 0 auto}
+.seg button{white-space:nowrap;flex:0 0 auto}
+.seg button.on{background:var(--acid);color:var(--on-acid)}
+.pin input{flex:1 1 0;min-width:0;width:100%;text-overflow:ellipsis;white-space:nowrap}
+.pin button{flex:0 0 26px}
+#go{white-space:nowrap;justify-content:center}
+.chs{gap:8px}
+.chs button{white-space:nowrap;color:var(--acid);border-color:rgba(200,255,61,.3);background:transparent}
+.chs button:hover{background:var(--acid);color:var(--on-acid)}
+@container stg (max-width:900px){.prm{grid-template-columns:minmax(0,1fr)}#go{width:100%}.pin .seg button{padding:6px 10px;font-size:12px}}
+
+/* ===== дашборд «Мои проекты» (React) ===== */
+.dashboard-topbar{background:rgba(10,6,21,.72)!important;border-color:var(--ln)!important}
+.dashboard-brand,.dashboard-brand>strong{color:var(--ink)!important}
+.dashboard-brand>span:last-child,.dashboard-local-badge,.projects-gallery-footer,.gallery-section-heading>div>span,.gallery-empty-hint{color:var(--mut)!important}
+.dashboard-main-nav a{color:var(--mut)}
+.dashboard-main-nav a:hover,.dashboard-main-nav a.active{color:var(--ink)}
+.dashboard-main-nav a::after{background:var(--acid)}
+.dashboard-main-nav a span{background:rgba(200,255,61,.14);color:var(--acid)}
+.dashboard-hero{background:linear-gradient(145deg,rgba(123,92,255,.26),rgba(20,12,41,.55) 60%)!important;border:1px solid var(--ln)!important;box-shadow:0 40px 90px -50px rgba(123,92,255,.9)!important}
+.dashboard-hero::before,.dashboard-hero::after{border-color:rgba(200,255,61,.18)!important}
+.projects-eyebrow{color:var(--acid)!important}
+.projects-eyebrow svg{color:var(--acid)!important}
+.dashboard-hero-copy h1{font:800 clamp(32px,4.4vw,62px)/1.02 Unbounded,Manrope,sans-serif!important;letter-spacing:-.05em;color:var(--ink)!important}
+.dashboard-hero-copy h1 em{font-style:normal;font-weight:800;color:transparent!important;-webkit-text-stroke:1.5px var(--acid)}
+.dashboard-hero-copy>p{color:var(--mut)!important;font-size:14px!important}
+.dashboard-stats>span{border-left:2px solid var(--acid)!important}
+.dashboard-stats strong{font:800 clamp(26px,3vw,40px)/1 Unbounded,Manrope,sans-serif!important;color:var(--acid)!important}
+.dashboard-stats small{color:var(--mut)!important;font-size:12px!important}
+.hero-art-card,.gallery-project-card,.gallery-create-card{background:rgba(20,12,41,.72)!important;border-color:var(--ln)!important;color:var(--ink)!important}
+.hero-art-label,.hero-art-footer,.gallery-project-copy small,.gallery-create-card small{color:var(--mut)!important}
+.gallery-project-copy strong,.gallery-create-card strong{color:var(--ink)!important}
+.hero-float-note{background:var(--card)!important;color:var(--ink)!important;border-color:var(--ln)!important}
+.gallery-create-card{border:1px dashed rgba(200,255,61,.4)!important}
+.gallery-create-card:hover{background:rgba(200,255,61,.07)!important}
+.gallery-create-plus{background:var(--acid)!important;color:var(--on-acid)!important}
+.gallery-section-heading h2{color:var(--ink)!important}
+.gallery-section-heading h2::before{background:var(--acid)!important}
+.project-search{background:rgba(20,12,41,.7)!important;border-color:var(--ln)!important;color:var(--mut)!important}
+.project-search input{color:var(--ink)!important}
+
+/* ===== «выделенный объект»: рамка и маркеры на hover (JS добавляет .hd) ===== */
+.hd{position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:inherit;opacity:0;transition:opacity .25s;background:radial-gradient(280px circle at var(--mx,50%) var(--my,50%),rgba(200,255,61,.11),transparent 70%)}
+.hd::before{content:"";position:absolute;inset:6px;border:1px dashed var(--acid);border-radius:12px}
+.hd b{position:absolute;width:9px;height:9px;background:var(--bg);border:1.5px solid var(--acid)}
+.hd b:nth-child(1){left:2px;top:2px}.hd b:nth-child(2){right:2px;top:2px}.hd b:nth-child(3){left:2px;bottom:2px}.hd b:nth-child(4){right:2px;bottom:2px}
+*:hover>.hd{opacity:1}
+
+/* курсор-узел для страниц без своего #cur + кислотный #cur на остальных */
+#cur i{border-radius:3px!important;background:var(--acid)!important;color:var(--on-acid)!important}
+.fxc{position:fixed;left:0;top:0;z-index:98;width:34px;height:34px;margin:-17px 0 0 -17px;border:1.5px solid var(--acid);border-radius:6px;pointer-events:none;opacity:0;transition:opacity .25s,width .3s,height .3s,margin .3s,background .3s}
+.fxc.on{opacity:.9}.fxc.hot{width:56px;height:56px;margin:-28px 0 0 -28px;background:rgba(200,255,61,.12);border-radius:50%}
+@media(hover:none){.fxc{display:none}}
+
+/* бегущая строка (лендинг) */
+.tick{position:relative;z-index:1;overflow:hidden;white-space:nowrap;margin:clamp(40px,6vw,80px) 0 0;border-block:1px solid var(--ln);-webkit-mask:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.tick div{display:inline-block;padding:12px 0;font:800 clamp(28px,5vw,64px)/1.15 Unbounded,Manrope,sans-serif;letter-spacing:-.04em;color:transparent;-webkit-text-stroke:1px rgba(244,239,255,.5);animation:tk 42s linear infinite}
+.tick:hover div{animation-play-state:paused}
+.tick b{color:var(--acid);-webkit-text-stroke:0;margin:0 .45em;font-weight:800}
+@keyframes tk{to{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){.tick div{animation:none}}
