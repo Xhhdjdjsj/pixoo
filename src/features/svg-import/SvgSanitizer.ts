@@ -6,6 +6,17 @@ export function cleanSvg(source: string) {
   }
 
   root.querySelectorAll('script, foreignObject, iframe, object, embed').forEach((node) => node.remove())
+  const normalizeLabel = (value: string) => value.toLocaleLowerCase('ru').replace(/[\s\u00a0]+/g, '')
+  for (const text of Array.from(root.querySelectorAll('text'))) {
+    if (normalizeLabel(text.textContent ?? '') === 'фоновыеобъекты') text.remove()
+  }
+  for (const group of Array.from(root.querySelectorAll('g'))) {
+    const texts = Array.from(group.querySelectorAll('text'))
+    const hasGraphics = group.querySelector('path, rect, circle, ellipse, polygon, polyline, line, use')
+    if (texts.length > 1 && normalizeLabel(texts.map((text) => text.textContent ?? '').join('')) === 'фоновыеобъекты' && !hasGraphics) {
+      texts.forEach((text) => text.remove())
+    }
+  }
   for (const element of [root, ...Array.from(root.querySelectorAll('*'))]) {
     for (const attribute of Array.from(element.attributes)) {
       const name = attribute.name.toLowerCase()

@@ -55,6 +55,7 @@ h1{font:700 clamp(2.1rem,6.2vw,5.2rem)/.98 Unbounded,Manrope,sans-serif;letter-s
 .scene::after{content:"";position:absolute;inset:0;background:radial-gradient(340px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.5),transparent 70%);opacity:0;transition:opacity .4s;pointer-events:none}
 .card:is(:hover,:focus-within) .scene::after{opacity:1}
 .o{position:absolute;z-index:1;left:var(--x);top:var(--y);width:var(--w);aspect-ratio:1;overflow:visible;translate:calc(var(--px,0)*var(--d)*-1px) calc(var(--py,0)*var(--d)*-1px);transition:translate .5s cubic-bezier(.2,.8,.2,1);filter:drop-shadow(7px 9px 0 rgba(26,16,51,.2));animation:bob 3.2s ease-in-out infinite;animation-delay:var(--dl,0s);animation-play-state:paused}
+.o.bg{opacity:.32;filter:grayscale(1) drop-shadow(5px 7px 0 rgba(26,16,51,.12));animation-duration:4.2s}
 .card:is(:hover,:focus-within) .o{animation-play-state:running}
 @keyframes bob{50%{transform:translateY(-9px) rotate(2.5deg)}}
 .chip{position:absolute;z-index:2;bottom:14px;padding:7px 14px;border-radius:99px;background:var(--card);font:700 13px Manrope,sans-serif;box-shadow:0 4px 14px -6px rgba(26,16,51,.45)}
@@ -89,6 +90,7 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;paddin
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));translate:-50% 160%;background:var(--ink);color:var(--bg);padding:14px 22px;border-radius:99px;font-weight:700;transition:translate .5s cubic-bezier(.3,1.4,.4,1);z-index:60;max-width:calc(100vw - 32px);text-align:center}
 .toast.on{translate:-50% 0}
 @media(hover:none){#cur,#aur{display:none}}
+@media(hover:none) and (prefers-reduced-motion:no-preference){.card .o{animation-play-state:running}.card .flag{opacity:.72;scale:1}.o.bg{opacity:.24}}
 @media(hover:hover) and (pointer:fine){.card{cursor:none}.cta{cursor:pointer}}
 @media(max-width:860px){.cell{grid-column:1/-1}}
 @media(max-width:560px){.nav{gap:8px;padding:7px 7px 7px 12px}.logo{gap:5px;font-size:15px}.nav a.lk{gap:3px;font-size:11px;padding-inline:2px}.bd{padding:1px 5px;font-size:9px}.sv{display:none}.nav .btn{width:31px;height:31px;justify-content:center;gap:0;padding:0;font-size:0}.nav .btn i{font-size:16px}}
@@ -125,39 +127,46 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;paddin
 </header>
 <section class="grid" aria-label="Шаблоны">
 <div class="cell" data-c="Стол" style="--s:7;--k:0;--r:38px 140px 38px 38px"><article class="card" data-t="Книга, смартфон и пазл" data-template="learn"><div class="scene s-lines">
+<svg class="o bg" style="--x:72%;--y:46%;--w:21%;--d:12;--dl:.5s"><use href="#lamp"/></svg>
 <svg class="o" style="--x:20%;--y:18%;--w:32%;--d:18"><use href="#book"/></svg>
 <svg class="o" style="--x:62%;--y:8%;--w:15%;--d:38;--dl:.4s"><use href="#phone"/></svg>
 <svg class="o" style="--x:66%;--y:40%;--w:19%;--d:30;--dl:.8s"><use href="#puzzle"/></svg>
 <svg class="o" style="--x:9%;--y:12%;--w:11%;--d:46;--dl:1.2s"><use href="#pen"/></svg>
 <span class="flag" style="--x:50%;--y:30%;--c:#6f4bff"><b>Дизайнер</b></span>
-<span class="chip a">4 объекта</span><span class="chip b">1200 × 800</span></div>
+<span class="chip a">6 объектов</span><span class="chip b">1200 × 800</span></div>
 <div class="body"><div class="meta"><span class="lv">Шаблон L</span><span class="tg">Стол</span></div><h3>Книга, смартфон и пазл</h3><button class="cta">Использовать шаблон <i>→</i></button></div></article></div>
 
 <div class="cell" data-c="Бумага" style="--s:5;--k:1;--r:140px 38px 38px 38px"><article class="card" data-t="Рабочее место и вдохновение" data-template="creative"><div class="scene s-grid">
+<svg class="o bg" style="--x:4%;--y:52%;--w:23%;--d:12;--dl:.3s"><use href="#book"/></svg>
+<svg class="o bg" style="--x:70%;--y:54%;--w:16%;--d:12;--dl:.7s"><use href="#phone"/></svg>
 <svg class="o" style="--x:22%;--y:10%;--w:42%;--d:18"><use href="#lamp"/></svg>
 <svg class="o" style="--x:64%;--y:10%;--w:26%;--d:36;--dl:.4s"><use href="#note"/></svg>
 <svg class="o" style="--x:62%;--y:44%;--w:20%;--d:44;--dl:.8s"><use href="#pen"/></svg>
 <svg class="o" style="--x:8%;--y:50%;--w:22%;--d:28;--dl:1.2s"><use href="#coin"/></svg>
 <span class="flag" style="--x:14%;--y:24%;--c:#e23d79"><b>Арт-директор</b></span>
-<span class="chip a">4 объекта</span><span class="chip b">1200 × 800</span></div>
+<span class="chip a">6 объектов</span><span class="chip b">1200 × 800</span></div>
 <div class="body"><div class="meta"><span class="lv">Шаблон L</span><span class="tg">Бумага</span></div><h3>Рабочее место и вдохновение</h3><button class="cta">Использовать шаблон <i>→</i></button></div></article></div>
 
 <div class="cell" data-c="Стол" style="--s:5;--k:2;--r:38px 38px 140px 38px"><article class="card" data-t="Наушники, книга и заметки" data-template="focus"><div class="scene s-lines">
+<svg class="o bg" style="--x:4%;--y:45%;--w:23%;--d:12;--dl:.3s"><use href="#lamp"/></svg>
+<svg class="o bg" style="--x:76%;--y:45%;--w:15%;--d:12;--dl:.7s"><use href="#coin"/></svg>
 <svg class="o" style="--x:24%;--y:16%;--w:44%;--d:18"><use href="#phones"/></svg>
 <svg class="o" style="--x:6%;--y:8%;--w:22%;--d:40;--dl:.4s"><use href="#book"/></svg>
 <svg class="o" style="--x:68%;--y:12%;--w:26%;--d:34;--dl:.8s"><use href="#note"/></svg>
 <svg class="o" style="--x:66%;--y:48%;--w:22%;--d:46;--dl:1.2s"><use href="#coin"/></svg>
 <span class="flag" style="--x:60%;--y:40%;--c:#1a1033"><b>Дизайнер</b></span>
-<span class="chip a">4 объекта</span><span class="chip b">1200 × 800</span></div>
+<span class="chip a">6 объектов</span><span class="chip b">1200 × 800</span></div>
 <div class="body"><div class="meta"><span class="lv">Шаблон L</span><span class="tg">Стол</span></div><h3>Наушники, книга и заметки</h3><button class="cta">Использовать шаблон <i>→</i></button></div></article></div>
 
 <div class="cell" data-c="Конструктор" style="--s:7;--k:3;--r:38px 38px 38px 140px"><article class="card" data-t="Устройства и новые решения" data-template="digital"><div class="scene s-dots">
+<svg class="o bg" style="--x:4%;--y:48%;--w:21%;--d:12;--dl:.3s"><use href="#book"/></svg>
+<svg class="o bg" style="--x:79%;--y:47%;--w:16%;--d:12;--dl:.7s"><use href="#phones"/></svg>
 <svg class="o" style="--x:22%;--y:18%;--w:34%;--d:18"><use href="#note"/></svg>
 <svg class="o" style="--x:64%;--y:8%;--w:15%;--d:38;--dl:.4s"><use href="#phone"/></svg>
 <svg class="o" style="--x:62%;--y:42%;--w:17%;--d:30;--dl:.8s"><use href="#coin"/></svg>
 <svg class="o" style="--x:8%;--y:8%;--w:14%;--d:46;--dl:1.2s"><use href="#puzzle"/></svg>
 <span class="flag" style="--x:40%;--y:50%;--c:#e23d79"><b>Арт-директор</b></span>
-<span class="chip a">4 объекта</span><span class="chip b">1200 × 800</span></div>
+<span class="chip a">6 объектов</span><span class="chip b">1200 × 800</span></div>
 <div class="body"><div class="meta"><span class="lv">Шаблон L</span><span class="tg">Конструктор</span></div><h3>Устройства и новые решения</h3><button class="cta">Использовать шаблон <i>→</i></button></div></article></div>
 </section>
 </div>
@@ -181,7 +190,7 @@ document.fonts&&document.fonts.ready.then(()=>sel($('.tab.on')));
 const ts=$('.toast');let tt;
 function toast(m){ts.textContent=m;ts.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>ts.classList.remove('on'),2800)}
 $$('.card').forEach(c=>{
-c.addEventListener('pointermove',e=>{if(rm)return;const r=c.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+c.addEventListener('pointermove',e=>{if(rm||e.pointerType!=='mouse')return;const r=c.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
 c.style.setProperty('--mx',x*100+'%');c.style.setProperty('--my',y*100+'%');
 c.style.setProperty('--px',((x-.5)*2).toFixed(3));c.style.setProperty('--py',((y-.5)*2).toFixed(3));
 c.style.transform='perspective(1000px) rotateX('+((.5-y)*6).toFixed(2)+'deg) rotateY('+((x-.5)*8).toFixed(2)+'deg)'});
@@ -192,7 +201,7 @@ const cur=$('#cur'),aur=$('#aur');
 let mx=innerWidth/2,my=innerHeight/2,cx=mx,cy=my,ax=mx,ay=my,rate=1,ly=scrollY;
 addEventListener('pointermove',e=>{mx=e.clientX;my=e.clientY;cur.classList.add('on')});
 document.addEventListener('pointerleave',()=>cur.classList.remove('on'));
-if(!rm){const an=mq.getAnimations()[0];
+if(!rm&&matchMedia('(hover:hover) and (pointer:fine)').matches){const an=mq.getAnimations()[0];
 (function f(){cx+=(mx-cx)*.22;cy+=(my-cy)*.22;ax+=(mx-ax)*.06;ay+=(my-ay)*.06;
 cur.style.transform='translate('+cx+'px,'+cy+'px)';aur.style.transform='translate('+ax+'px,'+ay+'px)';
 const dy=scrollY-ly;ly=scrollY;rate+=(1+Math.min(Math.abs(dy)*.6,9)-rate)*.08;if(an)an.playbackRate=rate;

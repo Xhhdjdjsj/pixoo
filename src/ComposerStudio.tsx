@@ -27,6 +27,9 @@ type ProjectSnapshot = {
   transparent: boolean
   includeBackground: boolean
   backdropId: BackdropId
+  canvasWidth?: number
+  canvasHeight?: number
+  preserveOriginalColors?: boolean
   updatedAt: number
   recoverySource?: 'legacy-project-html'
   recoveryKey?: string
@@ -34,10 +37,10 @@ type ProjectSnapshot = {
 type ProjectTemplate = { id: string; name: string; backdropId: BackdropId; objects: Array<{ name: string; role: 'main' | 'background' }> }
 
 const PROJECT_TEMPLATES: ProjectTemplate[] = [
-  { id: 'learn', name: 'Книга, смартфон и пазл', backdropId: 'desk', objects: [{ name: 'Книга', role: 'main' }, { name: 'Смартфон', role: 'main' }, { name: 'Пазл', role: 'main' }, { name: 'Карандаш', role: 'main' }] },
-  { id: 'creative', name: 'Рабочее место и вдохновение', backdropId: 'paper', objects: [{ name: 'Настольная лампа', role: 'main' }, { name: 'Блокнот', role: 'main' }, { name: 'Карандаш', role: 'main' }, { name: 'Монета', role: 'main' }] },
-  { id: 'focus', name: 'Наушники, книга и заметки', backdropId: 'desk', objects: [{ name: 'Наушники', role: 'main' }, { name: 'Книга', role: 'main' }, { name: 'Блокнот', role: 'main' }, { name: 'Монета', role: 'main' }] },
-  { id: 'digital', name: 'Устройства и новые решения', backdropId: 'buildplate', objects: [{ name: 'Блокнот', role: 'main' }, { name: 'Смартфон', role: 'main' }, { name: 'Монета', role: 'main' }, { name: 'Пазл', role: 'main' }] },
+  { id: 'learn', name: 'Книга, смартфон и пазл', backdropId: 'desk', objects: [{ name: 'Книга', role: 'main' }, { name: 'Смартфон', role: 'main' }, { name: 'Пазл', role: 'main' }, { name: 'Карандаш', role: 'main' }, { name: 'Настольная лампа', role: 'background' }, { name: 'Цветы', role: 'background' }] },
+  { id: 'creative', name: 'Рабочее место и вдохновение', backdropId: 'paper', objects: [{ name: 'Настольная лампа', role: 'main' }, { name: 'Блокнот', role: 'main' }, { name: 'Карандаш', role: 'main' }, { name: 'Монета', role: 'main' }, { name: 'Книга', role: 'background' }, { name: 'Смартфон', role: 'background' }] },
+  { id: 'focus', name: 'Наушники, книга и заметки', backdropId: 'desk', objects: [{ name: 'Наушники', role: 'main' }, { name: 'Книга', role: 'main' }, { name: 'Блокнот', role: 'main' }, { name: 'Монета', role: 'main' }, { name: 'Цветы', role: 'background' }, { name: 'Настольная лампа', role: 'background' }] },
+  { id: 'digital', name: 'Устройства и новые решения', backdropId: 'buildplate', objects: [{ name: 'Блокнот', role: 'main' }, { name: 'Смартфон', role: 'main' }, { name: 'Монета', role: 'main' }, { name: 'Пазл', role: 'main' }, { name: 'Книга', role: 'background' }, { name: 'Наушники', role: 'background' }] },
 ]
 
 const COMPOSITION_STARTERS: Array<{ label: string; query: string; mode: CompositionMode }> = [
@@ -55,10 +58,19 @@ const BACKDROPS: Array<{ id: BackdropId; label: string; description: string }> =
   { id: 'solid', label: 'Заливка', description: 'Цвет палитры' },
   { id: 'desk', label: 'Стол', description: 'Тёплая древесина' },
   { id: 'paper', label: 'Бумага', description: 'Лист с разметкой' },
-  { id: 'buildplate', label: 'Конструктор', description: 'Плита со шипами' },
+  { id: 'buildplate', label: 'Шипы', description: 'Плита со шипами' },
 ]
 
 const uid = () => crypto.randomUUID()
+const formatForProject = (project?: Pick<ProjectSnapshot, 'formatId' | 'canvasWidth' | 'canvasHeight'> | null): CompositionFormat => {
+  if (project?.formatId === 'custom' && Number.isFinite(project.canvasWidth) && Number.isFinite(project.canvasHeight)) {
+    const width = Math.max(200, Math.min(12000, Number(project.canvasWidth)))
+    const height = Math.max(200, Math.min(12000, Number(project.canvasHeight)))
+    return { id: 'custom', name: 'Свой размер', width, height, description: 'Настраиваемый размер холста' }
+  }
+  return FORMATS.find((entry) => entry.id === project?.formatId) ?? FORMATS[0]
+}
+const DEFAULT_PROJECT_FORMAT: CompositionFormat = { id: 'custom', name: 'Свой размер', width: 1080, height: 1920, description: 'Настраиваемый размер холста' }
 const safeStorage = <T,>(key: string, fallback: T): T => {
   try { return JSON.parse(localStorage.getItem(key) ?? 'null') as T ?? fallback } catch { return fallback }
 }
@@ -256,7 +268,7 @@ export default function ComposerStudio() {
   const projectsFrameRef = useRef<HTMLIFrameElement>(null)
   const templateFrameRef = useRef<HTMLIFrameElement>(null)
   const editorFrameRef = useRef<HTMLIFrameElement>(null)
-  const landingActionsRef = useRef<{ openEditor: () => void; createProject: () => void; openProjects: () => void; openTemplate: (templateId: string) => void; syncProjects: () => void; openProject: (projectId: string) => void; duplicateProject: (projectId: string) => void; requestDeleteProject: (projectId: string) => void; renameProject: (projectId: string) => void; sendEditorProjectData: () => void; applyEditorChange: (projectId: string, state: unknown) => void }>({ openEditor: () => {}, createProject: () => {}, openProjects: () => {}, openTemplate: () => {}, syncProjects: () => {}, openProject: () => {}, duplicateProject: () => {}, requestDeleteProject: () => {}, renameProject: () => {}, sendEditorProjectData: () => {}, applyEditorChange: () => {} })
+  const landingActionsRef = useRef<{ openEditor: () => void; createProject: () => void; openProjects: () => void; openTemplate: (templateId: string) => void; composeEditorRequest: (request: { query: string; mode: CompositionMode }) => void; syncProjects: () => void; openProject: (projectId: string) => void; duplicateProject: (projectId: string) => void; requestDeleteProject: (projectId: string) => void; renameProject: (projectId: string) => void; sendEditorProjectData: () => void; applyEditorChange: (projectId: string, state: unknown) => void; importEditorAssets: (assets: unknown[]) => void; importEditorPalette: (palette: unknown) => void }>({ openEditor: () => {}, createProject: () => {}, openProjects: () => {}, openTemplate: () => {}, composeEditorRequest: () => {}, syncProjects: () => {}, openProject: () => {}, duplicateProject: () => {}, requestDeleteProject: () => {}, renameProject: () => {}, sendEditorProjectData: () => {}, applyEditorChange: () => {}, importEditorAssets: () => {}, importEditorPalette: () => {} })
 
   useEffect(() => {
     const handleLandingMessage = (event: MessageEvent) => {
@@ -278,7 +290,10 @@ export default function ComposerStudio() {
       if (event.data.type === 'pixo:open-landing') setPage('landing')
       if (event.data.type === 'pixo:open-template' && typeof event.data.templateId === 'string') landingActionsRef.current.openTemplate(event.data.templateId)
       if (event.source === editorFrameRef.current?.contentWindow && event.data.type === 'pixo:editor-ready') landingActionsRef.current.sendEditorProjectData()
+      if (event.source === editorFrameRef.current?.contentWindow && event.data.type === 'pixo:compose-request' && typeof event.data.query === 'string') landingActionsRef.current.composeEditorRequest({ query: event.data.query, mode: event.data.mode === 'components' ? 'components' : 'metaphor' })
       if (event.source === editorFrameRef.current?.contentWindow && event.data.type === 'pixo:editor-change' && typeof event.data.projectId === 'string') landingActionsRef.current.applyEditorChange(event.data.projectId, event.data.state)
+      if (event.source === editorFrameRef.current?.contentWindow && event.data.type === 'pixo:editor-import-assets' && Array.isArray(event.data.assets)) landingActionsRef.current.importEditorAssets(event.data.assets)
+      if (event.source === editorFrameRef.current?.contentWindow && event.data.type === 'pixo:editor-add-palette') landingActionsRef.current.importEditorPalette(event.data.palette)
       if (event.data.type === 'pixo:set-theme' && (event.data.theme === 'light' || event.data.theme === 'dark')) {
         landingFrameRef.current?.contentWindow?.postMessage({ type: 'pixo:theme', theme: event.data.theme }, window.location.origin)
       }
@@ -364,11 +379,43 @@ export default function ComposerStudio() {
         const preferredFormat = FORMATS.find((entry) => entry.id === preferences.formatId) ?? FORMATS[0]
         const initialScene = (savedItems ?? []).filter((item) => item && typeof item.markup === 'string' && typeof item.viewBox === 'string')
         const storedProjects = (savedProjects ?? []).filter((project) => project && typeof project.id === 'string' && typeof project.name === 'string' && Array.isArray(project.items))
-          .map((project) => ({
-            ...project,
-            backdropId: BACKDROPS.some((entry) => entry.id === project.backdropId) ? project.backdropId : 'solid',
-            items: project.items.length || project.id !== savedProjectId ? project.items : initialScene,
-          }))
+          .map((project) => {
+            const normalizedProject = {
+              ...project,
+              backdropId: BACKDROPS.some((entry) => entry.id === project.backdropId) ? project.backdropId : 'solid' as BackdropId,
+              items: project.items.length || project.id !== savedProjectId ? project.items : initialScene,
+            }
+            const isCurrentReferenceProject = project.id === savedProjectId
+              && project.name.trim().toLocaleLowerCase('ru') === 'новый проект'
+              && project.formatId === 'wide'
+              && !project.canvasWidth
+              && !project.canvasHeight
+            if (!isCurrentReferenceProject) return normalizedProject
+            const oldFormat = FORMATS.find((entry) => entry.id === project.formatId) ?? FORMATS[0]
+            const scale = Math.min(DEFAULT_PROJECT_FORMAT.width / oldFormat.width, DEFAULT_PROJECT_FORMAT.height / oldFormat.height)
+            const items = normalizedProject.items.map((item) => {
+              const width = Math.max(1, item.width * scale)
+              const height = Math.max(1, item.height * scale)
+              const centerX = (item.x + item.width / 2) / oldFormat.width * DEFAULT_PROJECT_FORMAT.width
+              const centerY = (item.y + item.height / 2) / oldFormat.height * DEFAULT_PROJECT_FORMAT.height
+              return {
+                ...item,
+                x: Math.max(0, Math.min(DEFAULT_PROJECT_FORMAT.width - width, centerX - width / 2)),
+                y: Math.max(0, Math.min(DEFAULT_PROJECT_FORMAT.height - height, centerY - height / 2)),
+                width,
+                height,
+              }
+            })
+            const referencePalette = activePalettes.find((entry) => entry.id === project.paletteId) ?? selectedPalette
+            return {
+              ...normalizedProject,
+              formatId: DEFAULT_PROJECT_FORMAT.id,
+              canvasWidth: DEFAULT_PROJECT_FORMAT.width,
+              canvasHeight: DEFAULT_PROJECT_FORMAT.height,
+              backgroundColor: referencePalette.backgroundColors[0],
+              items,
+            }
+          })
         const emptyPlaceholders = legacyProjectsRecovered ? [] : storedProjects.filter((project) => project.name.trim().toLocaleLowerCase('ru') === 'новый проект' && project.items.length === 0)
         const projectArchive = [...archivedProjects, ...storedProjects.filter((project) => !archivedProjects.some((archived) => archived.id === project.id))]
         const projectsToRecover = emptyPlaceholders.length
@@ -399,7 +446,7 @@ export default function ComposerStudio() {
           updatedAt: Date.now(),
         } : null)
         const nextProjects = hydratedProject && !activeSavedProject ? [hydratedProject, ...projectsToRestore] : projectsToRestore
-        const projectFormat = FORMATS.find((entry) => entry.id === hydratedProject?.formatId) ?? preferredFormat
+        const projectFormat = hydratedProject ? formatForProject(hydratedProject) : preferredFormat
         const projectPalette = activeSavedProject ? activeProjectPalette : selectedPalette
         if (!alive) return
         setAssets(initialAssets)
@@ -456,7 +503,7 @@ export default function ComposerStudio() {
     const timer = window.setTimeout(() => {
       setSaved(false)
       const currentProject = projectsRef.current.find((project) => project.id === currentProjectId)
-      const snapshot: ProjectSnapshot = { id: currentProjectId, name: currentProject?.name ?? 'Новый проект', items, formatId: format.id, size, paletteId: palette.id, backgroundColor, transparent, includeBackground, backdropId, updatedAt: Date.now(), recoverySource: currentProject?.recoverySource, recoveryKey: currentProject?.recoveryKey }
+      const snapshot: ProjectSnapshot = { id: currentProjectId, name: currentProject?.name ?? 'Новый проект', items, formatId: format.id, canvasWidth: format.id === 'custom' ? format.width : undefined, canvasHeight: format.id === 'custom' ? format.height : undefined, preserveOriginalColors: currentProject?.preserveOriginalColors, size, paletteId: palette.id, backgroundColor, transparent, includeBackground, backdropId, updatedAt: Date.now(), recoverySource: currentProject?.recoverySource, recoveryKey: currentProject?.recoveryKey }
       const nextProjects = projectsRef.current.some((project) => project.id === currentProjectId)
         ? projectsRef.current.map((project) => project.id === currentProjectId ? snapshot : project)
         : [snapshot, ...projectsRef.current]
@@ -569,7 +616,7 @@ export default function ComposerStudio() {
     } finally {
       setCurrentProjectId(project.id)
       setItems(project.items)
-      setFormat(FORMATS.find((entry) => entry.id === project.formatId) ?? FORMATS[0])
+      setFormat(formatForProject(project))
       setSize(project.size === 'S' ? 'S' : 'L')
       setLibrarySizeFilter(project.size === 'S' ? 'S' : 'L')
       const projectPalette = palettes.find((entry) => entry.id === project.paletteId) ?? palettes[0]
@@ -592,7 +639,7 @@ export default function ComposerStudio() {
 
   function createProject() {
     const project: ProjectSnapshot = {
-      id: uid(), name: 'Новый проект', items: [], formatId: format.id, size, paletteId: palette.id,
+      id: uid(), name: 'Новый проект', items: [], formatId: DEFAULT_PROJECT_FORMAT.id, canvasWidth: DEFAULT_PROJECT_FORMAT.width, canvasHeight: DEFAULT_PROJECT_FORMAT.height, size, paletteId: palette.id,
       backgroundColor, transparent, includeBackground, backdropId, updatedAt: Date.now(),
     }
     void saveAndOpenProject(project)
@@ -607,7 +654,7 @@ export default function ComposerStudio() {
   function openSavedProject(project: ProjectSnapshot) {
     setCurrentProjectId(project.id)
     setItems(project.items)
-    setFormat(FORMATS.find((entry) => entry.id === project.formatId) ?? FORMATS[0])
+    setFormat(formatForProject(project))
     setSize(project.size === 'S' ? 'S' : 'L')
     setLibrarySizeFilter(project.size === 'S' ? 'S' : 'L')
     setPalette(palettes.find((entry) => entry.id === project.paletteId) ?? palettes[0])
@@ -624,8 +671,8 @@ export default function ComposerStudio() {
   function openTemplate(template: (typeof templates)[number]) {
     if (!template.items.length) { showNotice('Не нашёл SVG-объекты для этого шаблона. Проверьте библиотеку.'); return }
     const project: ProjectSnapshot = {
-      id: uid(), name: template.name, items: template.items.map((item) => ({ ...item, objectId: uid() })), formatId: format.id, size, paletteId: palette.id,
-      backgroundColor, transparent: false, includeBackground, backdropId: template.backdropId, updatedAt: Date.now(),
+      id: uid(), name: template.name, items: template.items.map((item) => ({ ...item, objectId: uid() })), formatId: format.id, canvasWidth: format.id === 'custom' ? format.width : undefined, canvasHeight: format.id === 'custom' ? format.height : undefined, size, paletteId: palette.id,
+      backgroundColor, transparent: false, includeBackground: true, backdropId: template.backdropId, updatedAt: Date.now(),
     }
     void saveAndOpenProject(project, true)
   }
@@ -720,6 +767,9 @@ export default function ComposerStudio() {
       project: {
         id: currentProjectId,
         name: projectsRef.current.find((project) => project.id === currentProjectId)?.name ?? 'Новый проект',
+        canvasWidth: projectsRef.current.find((project) => project.id === currentProjectId)?.canvasWidth,
+        canvasHeight: projectsRef.current.find((project) => project.id === currentProjectId)?.canvasHeight,
+        preserveOriginalColors: projectsRef.current.find((project) => project.id === currentProjectId)?.preserveOriginalColors,
         items,
         formatId: format.id,
         size,
@@ -738,7 +788,11 @@ export default function ComposerStudio() {
     if (typeof value !== 'object' || value === null || projectId !== currentProjectId) return
     const state = value as Record<string, unknown>
     if (!Array.isArray(state.items) || !currentProjectId) return
-    const selectedFormat = FORMATS.find((entry) => entry.id === state.formatId)
+    const customWidth = typeof state.canvasWidth === 'number' && Number.isFinite(state.canvasWidth) ? Math.max(200, Math.min(12000, state.canvasWidth)) : undefined
+    const customHeight = typeof state.canvasHeight === 'number' && Number.isFinite(state.canvasHeight) ? Math.max(200, Math.min(12000, state.canvasHeight)) : undefined
+    const selectedFormat = state.formatId === 'custom' && customWidth && customHeight
+      ? { id: 'custom', name: 'Свой размер', width: customWidth, height: customHeight, description: 'Настраиваемый размер холста' }
+      : FORMATS.find((entry) => entry.id === state.formatId)
     const selectedPalette = palettes.find((entry) => entry.id === state.paletteId)
     const changedItems = state.items as CompositionItem[]
     const currentProject = projectsRef.current.find((project) => project.id === currentProjectId)
@@ -747,6 +801,9 @@ export default function ComposerStudio() {
       name: typeof state.name === 'string' ? state.name : currentProject?.name ?? 'Новый проект',
       items: changedItems,
       formatId: selectedFormat?.id ?? currentProject?.formatId ?? format.id,
+      canvasWidth: selectedFormat?.id === 'custom' ? selectedFormat.width : undefined,
+      canvasHeight: selectedFormat?.id === 'custom' ? selectedFormat.height : undefined,
+      preserveOriginalColors: typeof state.preserveOriginalColors === 'boolean' ? state.preserveOriginalColors : currentProject?.preserveOriginalColors,
       size: state.size === 'S' || state.size === 'L' ? state.size : currentProject?.size ?? size,
       paletteId: selectedPalette?.id ?? currentProject?.paletteId ?? palette.id,
       backgroundColor: isHexColor(state.backgroundColor) ? state.backgroundColor : currentProject?.backgroundColor ?? backgroundColor,
@@ -817,6 +874,40 @@ export default function ComposerStudio() {
       setActivePanel('components')
       showNotice(`Добавлено SVG-компонентов: ${imported.length}. Проверьте размер и роль в свойствах.`)
     }
+  }
+
+  const importEditorAssets = (values: unknown[]) => {
+    void Promise.all(values.slice(0, 100).map((value) => sanitizeLibraryAsset(value))).then((results) => {
+      const imported = results.filter((asset): asset is LibraryComponent => asset !== null)
+      if (!imported.length) {
+        showNotice('SVG не удалось импортировать. Нужен корректный векторный файл без встроенных растровых изображений.')
+        editorFrameRef.current?.contentWindow?.postMessage({ type: 'pixo:editor-assets-imported', assets: [] }, window.location.origin)
+        return
+      }
+      setAssets((previous) => {
+        const known = new Set(previous.map((asset) => asset.id))
+        return [...imported.filter((asset) => !known.has(asset.id)), ...previous]
+      })
+      editorFrameRef.current?.contentWindow?.postMessage({ type: 'pixo:editor-assets-imported', assets: imported }, window.location.origin)
+      showNotice(`Добавлено SVG-компонентов: ${imported.length}. Они сохранены в библиотеке.`)
+    })
+  }
+
+  const importEditorPalette = (value: unknown) => {
+    const candidate = typeof value === 'object' && value !== null ? value as Partial<PaletteScheme> : null
+    const parsed = candidate ? normalizePalette({ ...candidate, id: `palette-${uid()}` }) : null
+    if (!parsed) {
+      showNotice('Палитра должна содержать не менее трёх корректных HEX-цветов.')
+      return
+    }
+    const sourcePalette = palettes.find((entry) => entry.id === 'palette-01' && Object.keys(entry.objectColorMap ?? {}).length)
+      ?? palettes.find((entry) => Object.keys(entry.objectColorMap ?? {}).length)
+    const next = completePaletteMaps(parsed, sourcePalette)
+    setPalettes((previous) => [...previous, next])
+    setPalette(next)
+    setBackgroundColor(next.backgroundColors[0])
+    editorFrameRef.current?.contentWindow?.postMessage({ type: 'pixo:editor-palette-added', palette: next }, window.location.origin)
+    showNotice(`Палитра «${next.name}» добавлена и сохранена.`)
   }
 
   const handleLibraryImport = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -967,18 +1058,25 @@ export default function ComposerStudio() {
     if (asset) addAssetAt(asset, event.clientX, event.clientY)
   }
 
-  const generate = (request: { query: string; mode: CompositionMode } = { query, mode }) => {
-    if (!assets.length) { showNotice('Сначала загрузите SVG-компоненты из исходной библиотеки'); setActivePanel('components'); return }
+  const generate = (request: { query: string; mode: CompositionMode } = { query, mode }, replyToEditor = false) => {
+    const reportToEditor = (type: 'pixo:composition-error', message: string) => {
+      if (replyToEditor) editorFrameRef.current?.contentWindow?.postMessage({ type, message }, window.location.origin)
+    }
+    if (!assets.length) { const message = 'Сначала загрузите SVG-компоненты из исходной библиотеки'; showNotice(message); reportToEditor('pixo:composition-error', message); setActivePanel('components'); return }
     const candidates = findComponents(assets, request.query, size, request.mode)
     const filtered = includeBackground ? candidates : candidates.filter((asset) => asset.role === 'main')
     if (!filtered.length) {
-      showNotice(`Не нашёл компонентов размера ${size} по этому запросу. Проверьте теги и вариант размера.`)
+      const message = `Не нашёл компонентов размера ${size} по этому запросу. Проверьте теги и вариант размера.`
+      showNotice(message)
+      reportToEditor('pixo:composition-error', message)
       return
     }
     const composition = buildComposition(format, filtered.slice(0, 8))
     setItems(composition)
     setSelectedId(null)
-    showNotice(`Собрано из ${composition.length} исходных SVG-компонентов · ${size}`)
+    if (replyToEditor) editorFrameRef.current?.contentWindow?.postMessage({ type: 'pixo:editor-composition', items: composition }, window.location.origin)
+    const message = `Собрано из ${composition.length} исходных SVG-компонентов · ${size}`
+    showNotice(message)
   }
 
   const applyCompositionStarter = (starter: (typeof COMPOSITION_STARTERS)[number]) => {
@@ -1135,6 +1233,7 @@ export default function ComposerStudio() {
     openEditor: continueProject,
     createProject,
     openProjects: () => setPage('gallery'),
+    composeEditorRequest: (request) => generate(request, true),
     openTemplate: (templateId) => {
       const template = templates.find((entry) => entry.id === templateId)
       if (template) openTemplate(template)
@@ -1147,7 +1246,7 @@ export default function ComposerStudio() {
           id: project.id,
           name: project.name,
           updatedAt: project.updatedAt,
-          format: FORMATS.find((entry) => entry.id === project.formatId) ?? FORMATS[0],
+          format: formatForProject(project),
           backgroundColor: project.backgroundColor,
           transparent: project.transparent,
           items: project.items.map((item) => ({ ...item, markup: item.sourceFileId?.startsWith('recovered-project-html:') ? item.markup : projectPalette ? recolorSvg(item.markup, item.role, projectPalette) : item.markup })),
@@ -1172,11 +1271,13 @@ export default function ComposerStudio() {
     },
     sendEditorProjectData,
     applyEditorChange,
+    importEditorAssets,
+    importEditorPalette,
   }
 
   return (
     <main className={page === 'editor' ? 'studio editor-theme' : 'studio'}>
-      {page === 'landing' ? <iframe ref={landingFrameRef} className="pixo-landing-frame" title="Pixo — главная страница" src={`${import.meta.env.BASE_URL}pixo-landing.html`} /> : page === 'gallery' ? (!ready ? <div className="gallery-loading"><AppIcon /><span>Загружаю проекты и SVG-библиотеку…</span></div> : loadError ? <div className="gallery-error"><div className="gallery-error-mark"><FolderOpen size={23} /></div><h2>Не удалось загрузить проекты</h2><p>Локальное хранилище временно недоступно. Повторите загрузку.</p><button className="gallery-create-button" onClick={retryProjectLoad}><RotateCw size={15} /> Повторить</button></div> : <iframe ref={projectsFrameRef} className="pixo-landing-frame" title="Pixo — Мои проекты" src={`${import.meta.env.BASE_URL}pixo-projects.html`} onLoad={() => landingActionsRef.current.syncProjects()} />): page === 'templates' ? <iframe ref={templateFrameRef} className="pixo-landing-frame" title="Шаблоны из библиотеки" src={`${import.meta.env.BASE_URL}template-library.html`} /> : <><iframe ref={editorFrameRef} className="pixo-landing-frame" title="Pixo — редактор" src={`${import.meta.env.BASE_URL}pixo-editor.html`} onLoad={sendEditorProjectData} />{false && <><header className="studio-header">
+      {page === 'landing' ? <iframe ref={landingFrameRef} className="pixo-landing-frame" title="Pixo — главная страница" src={`${import.meta.env.BASE_URL}pixo-landing.html`} /> : page === 'gallery' ? (!ready ? <div className="gallery-loading"><AppIcon /><span>Загружаю проекты и SVG-библиотеку…</span></div> : loadError ? <div className="gallery-error"><div className="gallery-error-mark"><FolderOpen size={23} /></div><h2>Не удалось загрузить проекты</h2><p>Локальное хранилище временно недоступно. Повторите загрузку.</p><button className="gallery-create-button" onClick={retryProjectLoad}><RotateCw size={15} /> Повторить</button></div> : <iframe ref={projectsFrameRef} className="pixo-landing-frame" title="Pixo — Мои проекты" src={`${import.meta.env.BASE_URL}pixo-projects.html`} onLoad={() => landingActionsRef.current.syncProjects()} />): page === 'templates' ? <iframe ref={templateFrameRef} className="pixo-landing-frame" title="Шаблоны из библиотеки" src={`${import.meta.env.BASE_URL}template-library.html`} /> : <><iframe ref={editorFrameRef} className="pixo-landing-frame" title="Pixo — редактор" src={`${import.meta.env.BASE_URL}pixo-editor.html?v=8`} onLoad={sendEditorProjectData} />{false && <><header className="studio-header">
         <div className="studio-brand"><button className="studio-brand-home" type="button" onClick={returnToLanding} aria-label="Pixo — главная страница" title="На главную"><AppIcon /><strong>Pixo</strong></button><span className="brand-divider" /><button className="project-title" onClick={returnToProjects} title="Открыть мои проекты"><small>МОИ ПРОЕКТЫ</small><span>{projects.find((project) => project.id === currentProjectId)?.name ?? 'Проект'} <ChevronDown size={13} /></span></button></div>
         <div className="studio-header-actions">
           <span className="studio-project"><i className="save-dot" data-saved={saved} />{saved ? 'Сохранено' : 'Сохраняем…'}</span>

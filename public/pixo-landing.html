@@ -271,7 +271,7 @@ mq.innerHTML=w+w;
 const aur=$('#aur');let mx=innerWidth/2,my=innerHeight/2,cx=mx,cy=my,ax=mx,ay=my,rate=1,ly=scrollY;
 addEventListener('pointermove',e=>{mx=e.clientX;my=e.clientY;cur.classList.add('on')});
 document.addEventListener('pointerleave',()=>cur.classList.remove('on'));
-if(!rm){const an=mq.getAnimations()[0];
+if(!rm&&matchMedia('(hover:hover) and (pointer:fine)').matches){const an=mq.getAnimations()[0];
 (function f(){cx+=(mx-cx)*.22;cy+=(my-cy)*.22;ax+=(mx-ax)*.06;ay+=(my-ay)*.06;
 cur.style.transform='translate('+cx+'px,'+cy+'px)';aur.style.transform='translate('+ax+'px,'+ay+'px)';
 const dy=scrollY-ly;ly=scrollY;rate+=(1+Math.min(Math.abs(dy)*.6,9)-rate)*.08;if(an)an.playbackRate=rate;

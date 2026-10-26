@@ -54,6 +54,9 @@ h1>span{display:block}
 .cv2::after{content:"";position:absolute;inset:0;background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.6),transparent 65%);opacity:0;transition:opacity .3s;pointer-events:none;mix-blend-mode:soft-light}
 [data-px]:hover .cv2::after{opacity:1}
 .o{position:absolute;left:calc(var(--x)*1%);top:calc(var(--y)*1%);width:calc(var(--w)*1cqh);aspect-ratio:1;rotate:calc(var(--r,0)*1deg);translate:calc(var(--px,0)*var(--z,1)*18px) calc(var(--py,0)*var(--z,1)*18px);transition:translate .5s cubic-bezier(.2,.8,.2,1),scale .5s cubic-bezier(.3,1.4,.4,1);filter:drop-shadow(5px 7px 0 rgba(26,16,51,.2));overflow:visible}
+.pc .o{transform-origin:center}
+@keyframes mobile-preview-float{50%{transform:translateY(-4px) rotate(1deg)}}
+.scene-preview{position:absolute;inset:0;display:block;width:100%;height:100%;overflow:visible;pointer-events:none}
 [data-px]:hover .o{scale:1.07}
 .cu{--c:var(--v);position:absolute;z-index:4;pointer-events:none;animation:wd 12s ease-in-out infinite alternate}
 .cu.b{--c:#e23d79;animation-duration:15s;animation-direction:alternate-reverse}
@@ -109,6 +112,7 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;paddin
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));translate:-50% 160%;background:var(--ink);color:var(--bg);padding:14px 22px;border-radius:99px;font-weight:700;transition:translate .5s cubic-bezier(.3,1.4,.4,1);z-index:70;max-width:calc(100vw - 32px);text-align:center}
 .toast.on{translate:-50% 0}
 @media(hover:none){#cur,#aur{display:none}}
+@media(hover:none) and (prefers-reduced-motion:no-preference){.pc .o{animation:mobile-preview-float 4.5s ease-in-out infinite;animation-delay:calc(var(--z,1)*.15s)}.pc .o:nth-child(even){animation-delay:.7s}}
 @media(max-width:900px){.hg{grid-template-columns:1fr}.ws{transform:none}.nav .lk,.nav .sv{display:none}.pc,.nw{grid-column:1/-1!important}.pc{--tr:28px!important;--tl:28px!important}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition-duration:.01ms!important}}
 </style>
@@ -178,8 +182,9 @@ const SP=[4,4,4,5,7,7,5,4,4,4];
 const g=$('#g'),itemsOf=p=>(p.items||[]).filter(item=>item.visible!==false&&(item.opacity??1)>0),itemCount=p=>Array.isArray(p.items)?itemsOf(p).length:(p.o||[]).length;
 const sc=p=>{
 if(Array.isArray(p.items)){
-const W=p.format?.width||1200,H=p.format?.height||800;
-return itemsOf(p).map(item=>'<svg class="o" style="left:'+((item.x||0)/W*100)+'%;top:'+((item.y||0)/H*100)+'%;width:'+((item.width||1)/W*100)+'%;height:'+((item.height||1)/H*100)+'%;--px:0;--py:0;--z:0;rotate:'+(Number(item.rotation)||0)+'deg;opacity:'+(Number.isFinite(item.opacity)?item.opacity:1)+'" viewBox="'+esc(item.viewBox||'0 0 100 100')+'" preserveAspectRatio="xMidYMid meet">'+item.markup+'</svg>').join('')
+const W=Number(p.format?.width)||1200,H=Number(p.format?.height)||800;
+const objects=itemsOf(p).map(item=>{const x=Number(item.x)||0,y=Number(item.y)||0,width=Math.max(1,Number(item.width)||1),height=Math.max(1,Number(item.height)||1),rotation=Number(item.rotation)||0,opacity=Number.isFinite(item.opacity)?item.opacity:1,transform=rotation?` transform="rotate(${rotation} ${x+width/2} ${y+height/2})"`:'';return'<svg x="'+x+'" y="'+y+'" width="'+width+'" height="'+height+'" viewBox="'+esc(item.viewBox||'0 0 100 100')+'" preserveAspectRatio="xMidYMid meet" opacity="'+opacity+'"'+transform+'>'+item.markup+'</svg>'}).join('');
+return'<svg class="scene-preview" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" aria-hidden="true">'+objects+'</svg>'
 }
 return(p.o||[]).map(([k,x,y,w,r,z])=>'<svg class="o" style="--x:'+x+';--y:'+y+';--w:'+w+';--r:'+r+';--z:'+z+'" viewBox="0 0 100 100"><use href="#'+k+'"/></svg>').join('')
 };
@@ -247,7 +252,7 @@ document.addEventListener('pointerout',e=>{const c=e.target.closest('[data-px]')
 const cur=$('#cur'),aur=$('#aur');let mx=innerWidth/2,my=innerHeight/2,cx=mx,cy=my,ax=mx,ay=my;
 addEventListener('pointermove',e=>{mx=e.clientX;my=e.clientY;cur.classList.add('on')});
 document.addEventListener('pointerleave',()=>cur.classList.remove('on'));
-if(!rm)(function f(){cx+=(mx-cx)*.22;cy+=(my-cy)*.22;ax+=(mx-ax)*.06;ay+=(my-ay)*.06;cur.style.transform='translate('+cx+'px,'+cy+'px)';aur.style.transform='translate('+ax+'px,'+ay+'px)';requestAnimationFrame(f)})();
+if(!rm&&matchMedia('(hover:hover) and (pointer:fine)').matches)(function f(){cx+=(mx-cx)*.22;cy+=(my-cy)*.22;ax+=(mx-ax)*.06;ay+=(my-ay)*.06;cur.style.transform='translate('+cx+'px,'+cy+'px)';aur.style.transform='translate('+ax+'px,'+ay+'px)';requestAnimationFrame(f)})();
 render(true);notifyParent('pixo:request-projects');
 </script>
 </body>
