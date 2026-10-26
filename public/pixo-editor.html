@@ -161,6 +161,7 @@ dialog#ex textarea{width:100%;height:180px;max-height:32vh;background:#14102f;co
 .context-menu button svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;color:var(--ac2)}
 .context-menu button kbd{margin-left:auto;color:var(--mt);font:10px Inter,sans-serif}
 .context-menu button.danger{color:var(--dg)}.context-menu button.danger svg{color:var(--dg)}.context-menu hr{height:1px;margin:5px 4px;border:0;background:var(--ln)}
+.mobile-panel-nav{display:none}
 @media(max-width:1200px) and (min-width:981px){.app{grid-template-columns:minmax(220px,260px) minmax(0,1fr) minmax(250px,280px);gap:10px;padding:10px}.top{margin:10px 10px 0}}
 @media(max-width:980px){html,body{height:auto;min-height:100%;scroll-padding-top:calc(env(safe-area-inset-top,0px) + 76px)}body{overflow:auto;display:block}.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;flex-wrap:wrap;margin:8px 8px 0;padding:9px 12px;border-radius:15px;gap:8px}.app{display:flex;flex-direction:column;gap:10px;padding:10px}.pn{max-height:min(58vh,520px);max-height:min(58svh,520px);min-height:0}.scr{max-height:none;overscroll-behavior:contain}.mid{min-height:0}.stage{height:58vh;height:58svh;min-height:320px;max-height:620px}.pj input{width:min(280px,48vw);min-width:0}.pr>div:first-child{flex-wrap:wrap}.top button,.tabs button,.seg button,.tg button,.pb button,.sel-actions button,.cs .ok{min-height:40px}.row button{opacity:1;pointer-events:auto}.row .row-copy{padding-right:98px}.add{width:36px;height:36px}.zm button{width:38px;height:36px}input[type=range]{height:30px}.context-menu{max-height:calc(100dvh - 16px);overflow:auto;overscroll-behavior:contain}}
 @media(max-width:620px){.top{gap:7px;padding:8px}.logo{gap:8px;font-size:20px}.logo svg{width:26px;height:26px}.pj{padding-left:9px;font-size:10px}.pj input{width:100%;max-width:42vw;font-size:12px}.sv{font-size:11px;gap:5px}.sv i{width:7px;height:7px}.ur{gap:4px}.ur button{width:38px;height:38px}.top>.btn{min-height:40px;padding:8px 11px;font-size:12px}.app{padding:8px;gap:9px}.pn{border-radius:15px;max-height:55vh;max-height:55svh}.sec{padding:13px}.pr{padding:10px;border-radius:15px}.pr>div:first-child{align-items:stretch}.pi{flex-basis:100%}.pi input{padding-left:110px;padding-right:35px}.mode{left:6px;font-size:11px;padding:5px 9px}.pr>div:first-child>.btn{width:100%;justify-content:center}.chips{gap:6px}.chip{padding:7px 10px;font-size:12px}.cap{flex-wrap:wrap}.cap small:last-child{margin-left:0}.stage{height:54vh;height:54svh;min-height:300px;border-radius:15px}.bar{flex-wrap:wrap;gap:7px;font-size:11px}.zm{gap:2px}.g3{gap:6px}.o{font-size:11px}.o small{font-size:10px}.surface-option{min-height:58px}.surface-icon{width:34px;height:30px}.export-project{align-items:flex-start}.export-dimensions{font-size:10px;padding:6px 8px}}
@@ -168,8 +169,34 @@ dialog#ex textarea{width:100%;height:180px;max-height:32vh;background:#14102f;co
 @media(max-width:620px){.stage{height:46vh;height:46svh;min-height:280px}}
 @media(hover:none) and (prefers-reduced-motion:no-preference){.btn:hover{transform:none}.card:hover{transform:none}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+@media(max-width:760px){
+ html,body{height:100%;height:100dvh;min-height:0;overflow:hidden}
+ body{display:flex;flex-direction:column;overflow:hidden}
+ .top{position:relative;top:auto;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"logo project status" "undo compose export";align-items:center;flex:none;gap:6px;margin:6px 6px 0;padding:7px 8px;border-radius:15px}
+ .logo{grid-area:logo;gap:7px;font-size:17px}.logo svg{width:23px;height:23px}
+ .pj{grid-area:project;min-width:0;padding-left:8px;font-size:9px}.pj input{width:100%;min-width:0;max-width:100%;font-size:12px}
+ .sv{grid-area:status;margin-left:0;gap:5px;font-size:10px;white-space:nowrap}.sv i{width:7px;height:7px}
+ .ur{grid-area:undo;gap:4px}.ur button{width:31px;height:34px}
+ #auto{grid-area:compose;min-width:0;width:100%;overflow:hidden;text-overflow:ellipsis}
+ #exp{grid-area:export;min-width:0;white-space:nowrap;padding-inline:6px}
+ .top>.btn{min-height:36px;padding:6px 8px;font-size:10px}
+ .app{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);align-content:stretch;flex:1 1 auto;width:100%;height:auto;min-height:0;padding:8px 8px calc(68px + env(safe-area-inset-bottom,0px));gap:0}
+ .app>.pn,.app>.mid{display:none;width:100%;height:100%;max-height:none;min-width:0;min-height:0;margin:0;border-radius:16px;overflow:hidden}
+ body[data-mobile-panel="canvas"] .app>.mid{display:flex;order:0}
+ body[data-mobile-panel="components"] .app>.pn:first-child{display:flex;order:0}
+ body[data-mobile-panel="properties"] .app>.pn:last-child{display:flex;order:0}
+ .app>.pn{max-height:none}.app>.pn .scr{max-height:none;min-height:0;overscroll-behavior:contain}
+ .mid{min-height:0;gap:8px}.pr{flex:none;padding:8px;border-radius:15px}.pr>div:first-child{gap:8px}
+ .stage{height:auto;min-height:0;max-height:none;flex:1 1 0;border-radius:15px}
+ .cap{flex:none}.bar{flex:none;padding-bottom:2px}
+ .mobile-panel-nav{position:fixed;z-index:35;right:8px;bottom:calc(7px + env(safe-area-inset-bottom,0px));left:8px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:5px;border:1px solid var(--ln);border-radius:17px;background:color-mix(in srgb,var(--pn) 94%,transparent);box-shadow:0 8px 26px #08051655;backdrop-filter:blur(14px)}
+ .mobile-panel-button{display:flex;min-width:0;min-height:48px;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px;border-radius:12px;color:var(--mt);font-size:10px;font-weight:600;line-height:1.15}
+ .mobile-panel-button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+ .mobile-panel-button.on{background:var(--ac);color:#fff;box-shadow:0 4px 12px #7c5cff44}
+ .mobile-panel-button:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+}
 </style></head>
-<body>
+<body data-mobile-panel="canvas">
 <header class="top">
  <button class="logo" id="home" type="button" aria-label="На главную"><svg viewBox="0 0 26 26" aria-hidden="true"><rect x="1" y="1" width="11" height="14" rx="3" fill="#8b6cff"/><rect x="14" y="1" width="11" height="8" rx="3" fill="#b9a6ff"/><rect x="1" y="17" width="8" height="8" rx="3" fill="#b9a6ff"/><rect x="11" y="11" width="14" height="14" rx="3" fill="#6f4bff"/></svg>Pixo</button>
  <div class="pj"><button id="projects" type="button">Мои проекты</button><input id="nm" value="Новый проект" aria-label="Название проекта"></div>
@@ -236,6 +263,17 @@ dialog#ex textarea{width:100%;height:180px;max-height:32vh;background:#14102f;co
  <div class="sec"><h4>Объекты сцены <small id="oc"></small></h4><div class="obs" id="ob"></div></div>
 </div></aside>
 </main>
+<nav class="mobile-panel-nav" id="mobilePanelNav" aria-label="Панели редактора" role="tablist">
+ <button type="button" class="mobile-panel-button on" data-mobile-panel="canvas" role="tab" aria-selected="true" aria-controls="stage">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M8 20v-3h8v3M8 9h8M8 12h5"/></svg><span>Редактор</span>
+ </button>
+ <button type="button" class="mobile-panel-button" data-mobile-panel="components" role="tab" aria-selected="false">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg><span>Компоненты</span>
+ </button>
+ <button type="button" class="mobile-panel-button" data-mobile-panel="properties" role="tab" aria-selected="false">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="7" cy="18" r="2"/></svg><span>Свойства</span>
+ </button>
+</nav>
 <dialog id="ex" aria-labelledby="exportTitle">
  <div class="export-shell">
   <header class="export-head">
@@ -272,6 +310,7 @@ dialog#ex textarea{width:100%;height:180px;max-height:32vh;background:#14102f;co
 <script src="palette-backdrops.js"></script>
 <script>
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+function setMobilePanel(panel){if(!['canvas','components','properties'].includes(panel))return;document.body.dataset.mobilePanel=panel;$$('#mobilePanelNav [data-mobile-panel]').forEach(button=>{const active=button.dataset.mobilePanel===panel;button.classList.toggle('on',active);button.setAttribute('aria-selected',String(active))})}
 const inApp=window.parent!==window,escapeHtml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const iconSvg=body=>`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${body}</svg>`,I={layer:iconSvg('<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/>'),up:iconSvg('<path d="M12 19V5M6 11l6-6 6 6"/>'),dn:iconSvg('<path d="M12 5v14M6 13l6 6 6-6"/>'),dup:iconSvg('<rect x="9" y="9" width="11" height="11" rx="3"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>'),ungroup:iconSvg('<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16V4h12M11 13l2-2 2 2 3-4"/>'),del:iconSvg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>'),flip:iconSvg('<path d="M12 3v18M8 7 3 12l5 5V7ZM16 7l5 5-5 5V7Z"/>'),reset:iconSvg('<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/>'),top:iconSvg('<path d="M12 20V9M8 13l4-4 4 4M5 4h14"/>'),bot:iconSvg('<path d="M12 4v11M8 11l4 4 4-4M5 20h14"/>'),rot:iconSvg('<path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/>')};
 let parentProjectId='',appAssets=[],syncTimer,undoHistory=[],redoHistory=[],historyCurrent=null;
@@ -446,6 +485,7 @@ sv.addEventListener('pointermove',e=>{if(!drag)return;const o=get(st.sel),p=pt(e
  else{const angle=-(drag.rotation)*Math.PI/180,dx=p[0]-drag.cx,dy=p[1]-drag.cy,scaled=Math.max(Math.abs(dx*Math.cos(angle)-dy*Math.sin(angle)),Math.abs(dx*Math.sin(angle)+dy*Math.cos(angle)))/200;o.s=clamp(scaled,.05,3)}sync()});
 const finishCanvasDrag=()=>{drag=null};sv.addEventListener('pointerup',finishCanvasDrag);sv.addEventListener('pointercancel',finishCanvasDrag);
 document.addEventListener('click',e=>{const t=e.target;let b;
+ if(b=t.closest('[data-mobile-panel]')){setMobilePanel(b.dataset.mobilePanel);return}
  if(b=t.closest('[data-g]')){const g=b.dataset.g,v=b.dataset.v;
   if(g==='det'){switchDetail(v);return}
   if(g=='fmt'&&v!=st.fmt){const [W,H]=D[v];resizeCanvas(W,H);st.fmt=v;st.cw=W;st.ch=H}
@@ -453,8 +493,8 @@ document.addEventListener('click',e=>{const t=e.target;let b;
  if(b=t.closest('[data-sw]')){st.fill=b.dataset.sw;st.tr=false;sync();return}
  if(b=t.closest('[data-bg-palette]')){const id=b.dataset.bgPalette,variant=PALETTE_BACKDROPS[id];if(variant){st.paletteBackgroundId=id;st.fill=variant.bg;st.tr=false;sync()}return}
  if(b=t.closest('[data-t]')){st.tab=b.dataset.t;sync();return}
- if(b=t.closest('[data-asset-id]')){const asset=appAssets.find(a=>a.id===b.dataset.assetId);if(asset)addAsset(asset);return}
- if(b=t.closest('.card')){add(b.dataset.k,b.dataset.v);return}
+ if(b=t.closest('[data-asset-id]')){const asset=appAssets.find(a=>a.id===b.dataset.assetId);if(asset){addAsset(asset);setMobilePanel('canvas')}return}
+ if(b=t.closest('.card')){add(b.dataset.k,b.dataset.v);setMobilePanel('canvas');return}
  if(b=t.closest('#chips .chip')){if(st.mode==='n'){st.nm2=(st.nm2.trim()?st.nm2.replace(/[,\s]+$/,'')+', ':'')+b.textContent;drawChips();sync()}else{st.th=b.textContent;requestComposition()}return}
  if(b=t.closest('#pl .row,#ob .chip')){const id=b.dataset.id,a=t.closest('[data-a]');st.sel=id;if(a&&a.dataset.a=='del')del(id);else if(a&&a.dataset.a=='dup')dup();else if(a&&['up','dn','top','bottom'].includes(a.dataset.a))moveLayer(a.dataset.a,id);else sync()}});
 $('#sc').oninput=e=>{const o=get(st.sel);if(o){const scale=e.target.value/100;if(o.markup){const width=scale*Math.min(...dim()),ratio=o.height/Math.max(1,o.width);o.width=clamp(width,20,dim()[0]-o.x);o.height=clamp(o.width*ratio,20,dim()[1]-o.y)}else o.s=scale;sync()}};
