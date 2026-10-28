@@ -531,8 +531,9 @@ document.addEventListener('pointermove',e=>{const state=libraryPointerDrag;if(!s
 function finishLibraryPointerDrag(e,cancelled=false){const state=libraryPointerDrag;if(!state||e.pointerId!==state.pointerId)return;libraryPointerDrag=null;state.ghost?.remove();document.body.classList.remove('library-dragging');if(!state.started){if(!cancelled&&state.pointerType!=='touch'){suppressLibraryClick(state.card);addLibraryCard(state.card)}return}suppressLibraryClick(state.card);const rect=dropStage.getBoundingClientRect(),inside=!cancelled&&e.clientX>=rect.left&&e.clientX<=rect.right&&e.clientY>=rect.top&&e.clientY<=rect.bottom;if(!inside){if(matchMedia('(max-width:760px)').matches)setMobilePanel('components');return}const point=pt(e),assetId=state.card.dataset.assetId;if(assetId){const asset=appAssets.find(item=>item.id===assetId);if(asset)addAsset(asset,point)}else if(state.card.dataset.k)add(state.card.dataset.k,state.card.dataset.v||'m',point);if(matchMedia('(max-width:760px)').matches)setMobilePanel('canvas')}
 function finishMobileCardTap(e,cancelled=false){const tap=mobileCardTap;if(!tap||e.pointerId!==tap.pointerId)return;mobileCardTap=null;if(cancelled||tap.moved)return;const hit=document.elementFromPoint(e.clientX,e.clientY);if(!hit||!tap.card.contains(hit))return;suppressLibraryClick(tap.card);addLibraryCard(tap.card)}
 document.addEventListener('pointerup',e=>{finishMobileCardTap(e);finishLibraryPointerDrag(e);document.body.classList.remove('library-pointer-active')});document.addEventListener('pointercancel',e=>{finishMobileCardTap(e,true);finishLibraryPointerDrag(e,true);document.body.classList.remove('library-pointer-active')});
+const UI_CONTROLS='[data-t],[data-g],[data-sw],[data-bg-palette],#mobilePanelNav [data-mobile-panel]';
 function handleUiAction(t){let b;
- if(b=t.closest('[data-mobile-panel]')){setMobilePanel(b.dataset.mobilePanel);return true}
+ if(b=t.closest('#mobilePanelNav [data-mobile-panel]')){setMobilePanel(b.dataset.mobilePanel);return true}
  if(b=t.closest('[data-g]')){const g=b.dataset.g,v=b.dataset.v;
   if(g==='det'){switchDetail(v);return true}
   if(g=='fmt'&&v!=st.fmt){const [W,H]=D[v];resizeCanvas(W,H);st.fmt=v;st.cw=W;st.ch=H}
@@ -541,9 +542,11 @@ function handleUiAction(t){let b;
  if(b=t.closest('[data-bg-palette]')){const id=b.dataset.bgPalette,variant=PALETTE_BACKDROPS[id];if(variant){st.paletteBackgroundId=id;st.fill=variant.bg;st.tr=false;sync()}return true}
  if(b=t.closest('[data-t]')){st.tab=b.dataset.t;$('#pc').hidden=st.tab!=='c';$('#pl').hidden=st.tab!=='l';$$('[data-t]').forEach(btn=>btn.classList.toggle('on',btn.dataset.t===st.tab));if(matchMedia('(max-width:760px)').matches)setMobilePanel('components');sync();return true}
  return false}
-document.addEventListener('pointerup',e=>{if(e.pointerType!=='touch'||!matchMedia('(max-width:760px)').matches)return;const control=e.target.closest('[data-t],[data-g],[data-mobile-panel],[data-sw],[data-bg-palette]');if(!control)return;lastControlTouchAt=Date.now();handleUiAction(control)},true);
+let controlTouch=null;
+document.addEventListener('pointerdown',e=>{controlTouch=e.pointerType==='touch'&&e.target.closest(UI_CONTROLS)?{id:e.pointerId,x:e.clientX,y:e.clientY}:null},true);
+document.addEventListener('pointerup',e=>{const start=controlTouch;controlTouch=null;if(e.pointerType!=='touch'||!matchMedia('(max-width:760px)').matches)return;const control=e.target.closest(UI_CONTROLS);if(!control)return;lastControlTouchAt=Date.now();if(!start||start.id!==e.pointerId||Math.hypot(e.clientX-start.x,e.clientY-start.y)>10)return;handleUiAction(control)},true);
 document.addEventListener('click',e=>{const t=e.target;let b;
- if(Date.now()-lastControlTouchAt<450&&t.closest('[data-t],[data-g],[data-mobile-panel],[data-sw],[data-bg-palette]'))return;
+ if(Date.now()-lastControlTouchAt<450&&t.closest(UI_CONTROLS))return;
  const clickedCard=t.closest('.card');if(lastMobileTapCard&&clickedCard===lastMobileTapCard){lastMobileTapCard=null;return}
  if(handleUiAction(t))return;
  if(b=t.closest('.card')){addLibraryCard(b);return}
